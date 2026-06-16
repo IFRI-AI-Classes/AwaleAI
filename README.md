@@ -106,7 +106,9 @@ Prérequis : Python 3.10+, aucune dépendance externe.
 
 ## Roadmap
 
-- [x] Phase 1 — Moteur de jeu, plateau, règles, scores
-- [ ] Phase 2 — Intelligence artificielle (Minimax / Alpha-Beta)
-- [ ] Phase 3 — Interface graphique
-- [ ] Phase 4 — Mode réseau / multijoueur
+| Phase | Objectif | Tâches | Statut |
+|---|---|---|---|
+| **Phase 1** | Moteur de jeu | Étude des règles · Modélisation du plateau · Développement du moteur · Gestion des scores | ✅ Terminé |
+| **Phase 2** | IA classique | Stratégie aléatoire · Heuristique · Minimax · Alpha-Beta | 🔲 À venir |
+| **Phase 3** | IA par renforcement | Étude du RL · Implémentation Q-Learning · Entraînement des agents | 🔲 À venir |
+| **Phase 4** | Finalisation | Interface graphique · Benchmark · Préparation démonstration | 🔲 À venir |
