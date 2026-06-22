@@ -66,3 +66,34 @@ class Rules:
             seeds -= 1
 
         return current
+    
+    @staticmethod
+    def get_valid_moves(board, player):
+        """
+        Retourne la liste des coups valides pour le joueur courant.
+
+        Returns:
+            list: indices des cases valides.
+        """
+
+        valid_moves = []
+
+        for hole in range(len(board.holes)):
+            if Rules.is_valid_move(board, hole, player):
+                valid_moves.append(hole)
+        
+        opponent_holes = range(0, 6) if player == 2 else range(6, 12)
+        if sum(board.holes[i] for i in opponent_holes) == 0:
+            # Si l'adversaire n'a plus de graines, on doit lui en donner
+            nourishing_moves = []
+
+            for hole in valid_moves:
+                temp_board = board.copy()
+                last_hole = Rules.sow(temp_board, hole)
+                if any(temp_board.holes[i] > 0 for i in opponent_holes):
+                    nourishing_moves.append(hole)
+                
+            if nourishing_moves:
+                return nourishing_moves
+
+        return valid_moves
