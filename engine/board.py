@@ -1,6 +1,7 @@
 class Board:
     def __init__(self):
         self.holes = [4] * 12
+        print(self.holes)
 
     def display(self):
         print("\nJoueur 2")
@@ -10,5 +11,5 @@ class Board:
   
   
 # Tester la classe    
-# board = Board()
-# board.display()
+board = Board()
+board.display()

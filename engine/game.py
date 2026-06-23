@@ -50,21 +50,20 @@ class Game:
 
         captured = 0
 
-        while last_hole >= 0:
+        # Camp adverse selon qui vient de jouer
+        if self.current_player == 1:
+            opp_start, opp_end = 6, 12
+        else:
+            opp_start, opp_end = 0, 6
 
+        while opp_start <= last_hole < opp_end:
             seeds = self.board.holes[last_hole]
 
-            # Arrêt si la case ne contient ni 2 ni 3 graines
             if seeds not in [2, 3]:
                 break
 
-            # Ajout des graines capturées
             captured += seeds
-
-            # Vidage de la case capturée
             self.board.holes[last_hole] = 0
-
-            # Passage à la case précédente
             last_hole -= 1
 
         return captured
