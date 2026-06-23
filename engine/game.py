@@ -50,12 +50,13 @@ class Game:
 
         captured = 0
 
-        # Camp adverse selon qui vient de jouer
+        # définir la zone adverse
         if self.current_player == 1:
             opp_start, opp_end = 6, 12
         else:
             opp_start, opp_end = 0, 6
 
+        # on recule tant qu’on est dans le camp adverse
         while opp_start <= last_hole < opp_end:
             seeds = self.board.holes[last_hole]
 
@@ -64,6 +65,7 @@ class Game:
 
             captured += seeds
             self.board.holes[last_hole] = 0
+
             last_hole -= 1
 
         return captured
@@ -82,11 +84,7 @@ class Game:
             hole (int): case choisie par le joueur.
         """
 
-        if not Rules.is_valid_move(
-                self.board,
-                hole,
-                self.current_player):
-
+        if hole not in Rules.get_valid_moves(self.board, self.current_player):
             print("Coup invalide.")
             return False
 
@@ -119,3 +117,70 @@ class Game:
         print(f"Score J2 : {self.score_p2}")
 
         print(f"Tour joueur {self.current_player}")
+
+    def get_children(self) -> list:
+        """
+        Génère les états enfants du jeu actuel.
+
+        Un état enfant correspond à un coup valide joué par le joueur courant.
+
+        Returns:
+            list: liste des états enfants (objets Game).
+        """
+
+        children = []
+
+        for hole in range(12):
+            if Rules.is_valid_move(self.board, hole, self.current_player):
+                child = Game()
+                child.board = self.board.copy()
+                child.score_p1 = self.score_p1
+                child.score_p2 = self.score_p2
+                child.current_player = self.current_player
+
+                child.play_move(hole)
+
+                children.append(child)
+
+        return children
+
+    def is_game_over(self) -> bool:
+        """
+        La partie est terminée si :
+        - Le joueur courant n'a plus de coups légaux (sa rangée est vide).
+        - Un joueur a déjà capturé plus de 24 graines (majorité absolue).
+        - Égalité à 24-24 (match nul).
+        """
+        if self.score_p1 > 24 or self.score_p2 > 24:
+            return True
+
+        if self.score_p1 == 24 and self.score_p2 == 24:
+            return True  # égalité
+
+        if not Rules.get_valid_moves(self.board, self.current_player):
+            return True  # joueur courant bloqué
+
+        return False
+
+    def get_winner(self) -> str:
+        """
+        Appelée uniquement si is_game_over() == True.
+        Si le joueur courant est bloqué, les graines restantes
+        vont à l'autre joueur (règle Awalé classique).
+        """
+        if not Rules.get_valid_moves(self.board, self.current_player):
+            # Ramasser toutes les graines restantes
+            remaining = sum(self.board.holes)
+            if self.current_player == 1:
+                self.score_p2 += remaining
+            else:
+                self.score_p1 += remaining
+            self.board.holes = [0] * 12
+
+        if self.score_p1 > self.score_p2:
+            return "Joueur 1"
+        elif self.score_p2 > self.score_p1:
+            return "Joueur 2"
+        else:
+            return "Égalité"
+        

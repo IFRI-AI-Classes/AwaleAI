@@ -1,19 +1,28 @@
 from engine.game import Game
+from engine.alpha_beta.elagage import best_move
+
 
 game = Game()
+AI_PLAYER = 2  # L'IA joue en tant que joueur 2
 
 while True:
-
     game.display()
 
-    raw = int(input("Choisissez une case (1-6) : "))
+    if game.is_game_over():
+        print("\n=== Partie terminée ===")
+        print(f"Vainqueur : {game.get_winner()}")
+        print(f"Score final — J1 : {game.score_p1} | J2 : {game.score_p2}")
+        break
 
-    # Joueur 1 : 1-6 → indices 0-5
-    # Joueur 2 : 1-6 → indices 6-11
-    if game.current_player == 1:
-        hole = raw - 1
+    if game.current_player == AI_PLAYER:
+        print("L'IA réfléchit...")
+        hole = best_move(game, depth=6)
+        print(f"L'IA joue la case {hole - 5}")  # affichage 1-6
+        game.play_move(hole)
+
     else:
-        hole = raw + 5  # 1→6, 2→7, 3→8, 4→9, 5→10, 6→11
+        raw = int(input("Choisissez une case (1-6) : "))
+        hole = raw - 1 if game.current_player == 1 else raw + 5
+        if not game.play_move(hole):
+            continue
 
-    if not game.play_move(hole):
-        continue
