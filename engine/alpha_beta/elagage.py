@@ -1,62 +1,70 @@
 import math
+from typing import Optional
 from ..rules import Rules
 from engine.game import Game
 
+WIN_SCORE = 999999  # Score représentant une victoire pour le joueur maximisant
 # Considérons un objet Game qui représente l'état actuel du jeu Awélé. L'algorithme alpha-beta est utilisé pour déterminer le meilleur coup à jouer en fonction de l'état actuel du jeu et de la profondeur de recherche spécifiée.
 
 W1, W2, W3, W5 = 100, 10, 5, 0.5
-def evaluate(state) -> float:
-    """Fonction d'évaluation pour le jeu Awélé.
-    Args:
-        state: l'état actuel du jeu (instance de Game).
-    Returns:
-        Un score numérique représentant la valeur de l'état pour le joueur maximisant.
-    """
-    remaining = 0
-    p1 = state.score_p1
-    p2 = state.score_p2
-    # Etat terminal : si un joueur a capturé plus de 24 graines, il gagne
-    
-    if p1 > 24:
-        return 999999
+def evaluate(state, player: int) -> float:
+    # Camp du joueur évalué
+    start = 0 if player == 1 else 6
+    end = start + 6
 
-    if p2 > 24:
-        return -999999
-    
-    if p1 == 24 and p2 == 24:
-        return 0  # égalité
-    
+    my_holes = state.board.holes[start:end]
+    opp_holes = state.board.holes[6 - start:12 - start]
+
+    my_score = state.score_p1 if player == 1 else state.score_p2
+    opp_score = state.score_p2 if player == 1 else state.score_p1
+    opponent = 2 if player == 1 else 1
+
+    # Victoire immédiate
+    if my_score > 24:
+        return WIN_SCORE
+    if opp_score > 24:
+        return -WIN_SCORE
+    if my_score == 24 and opp_score == 24:
+        return 0
+
+    # Fin de partie par blocage
     if not Rules.get_valid_moves(state.board, state.current_player):
         remaining = sum(state.board.holes)
-        if state.current_player == 1:
-            p2 += remaining
+
+        my_final = my_score
+        opp_final = opp_score
+
+        if state.current_player == player:
+            opp_final += remaining
         else:
-            p1 += remaining
+            my_final += remaining
+
+        if my_final > opp_final:
+            return WIN_SCORE
+        elif opp_final > my_final:
+            return -WIN_SCORE
+        else:
+            return 0
+
+    score = 0
 
     # Différence de graines capturées
-    score = W1 * (p1 - p2)
+    score += W1 * (my_score - opp_score)
 
-    # Opportunités de capture (cases contenant 1 ou 2 graines)
-    mes_opp = sum(1 for h in state.board.holes[6:12] if h in (1, 2))
-    ses_opp = sum(1 for h in state.board.holes[0:6] if h in (1, 2))
-
-    score += W2 * (mes_opp - ses_opp)
+    # Opportunités de capture
+    my_opp = sum(1 for h in my_holes if h in (1, 2))
+    opp_opp = sum(1 for h in opp_holes if h in (1, 2))
+    score += W2 * (my_opp - opp_opp)
 
     # Mobilité
-    my_moves = Rules.get_valid_moves(state.board, 1)
-    opp_moves = Rules.get_valid_moves(state.board, 2)
-
-    score += W3 * (len(my_moves) - len(opp_moves))
+    my_moves = len(Rules.get_valid_moves(state.board, player))
+    opp_moves = len(Rules.get_valid_moves(state.board, opponent))
+    score += W3 * (my_moves - opp_moves)
 
     # Contrôle des graines sur le plateau
-    score += W5 * (sum(state.board.holes[0:6]) - sum(state.board.holes[6:12]))
+    score += W5 * (sum(my_holes) - sum(opp_holes))
 
     return score
-
-def evaluate_for(state, player) -> float:
-    """Score relatif au joueur donné — les deux joueurs maximisent toujours."""
-    raw = evaluate(state)
-    return raw if player == 1 else -raw
 
 
 def alpha_beta(state, depth, alpha, beta, current_player) -> float:
@@ -71,7 +79,7 @@ def alpha_beta(state, depth, alpha, beta, current_player) -> float:
         Le score de la meilleure action pour le joueur maximisant.
     """
     if depth == 0 or state.is_game_over():
-        return evaluate_for(state, current_player)
+        return evaluate(state, current_player)
 
     best = -math.inf
     next_player = 2 if current_player == 1 else 1
@@ -87,7 +95,7 @@ def alpha_beta(state, depth, alpha, beta, current_player) -> float:
     return best
 
 
-def best_move(state, depth=100) -> int:
+def best_move(state, depth=100) -> Optional[int]:
     current_player = state.current_player
     next_player = 2 if current_player == 1 else 1
     best_score, best_mv = -math.inf, None
@@ -100,10 +108,14 @@ def best_move(state, depth=100) -> int:
         child.score_p1 = state.score_p1
         child.score_p2 = state.score_p2
         child.current_player = current_player
-        child.play_move(hole)
+        if not child.play_move(hole):
+            continue  # Si le coup n'est pas valide, passer au suivant
 
-        s = -alpha_beta(child, depth - 1, -math.inf, math.inf, next_player)
-        if s > best_score:
-            best_score, best_mv = s, hole
-
+        score = -alpha_beta(child, depth - 1, -math.inf, math.inf, next_player)
+        if score > best_score:
+            best_score, best_mv = score, hole
+        
+        if best_score >= WIN_SCORE:  # Si on trouve un coup gagnant, on peut s'arrêter
+            break
+            
     return best_mv

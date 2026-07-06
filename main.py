@@ -3,7 +3,7 @@ from engine.alpha_beta.elagage import best_move
 
 
 game = Game()
-AI_PLAYER = 2  # L'IA joue en tant que joueur 2
+AI_PLAYER = 1  # L'IA joue en tant que joueur 1
 
 while True:
     game.display()
@@ -17,7 +17,7 @@ while True:
     if game.current_player == AI_PLAYER:
         print("L'IA réfléchit...")
         hole = best_move(game, depth=6)
-        print(f"L'IA joue la case {hole - 5}")  # affichage 1-6
+        print(f"L'IA joue la case {(hole - 5) if AI_PLAYER == 2 else hole}")  # affichage 1-6
         game.play_move(hole)
 
     else:
