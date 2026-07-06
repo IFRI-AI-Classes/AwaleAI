@@ -136,16 +136,15 @@ class Game:
         children = []
 
         for hole in range(12):
-            if Rules.is_valid_move(self.board, hole, self.current_player):
+            if hole in Rules.get_valid_moves(self.board, self.current_player):
                 child = Game()
                 child.board = self.board.copy()
                 child.score_p1 = self.score_p1
                 child.score_p2 = self.score_p2
                 child.current_player = self.current_player
 
-                child.play_move(hole)
-
-                children.append(child)
+                if child.play_move(hole) :
+                    children.append(child)
 
         return children
 
