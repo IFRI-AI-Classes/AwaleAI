@@ -118,18 +118,16 @@ class Game:
         """
         children = []
 
-        # MODIF : remplace is_valid_move par get_valid_moves pour respecter
-        # la règle de nourrissage. is_valid_move ignorait le cas où le camp
-        # adverse est vide et forçait un coup nourricier — désaccord avec
-        # play_move qui utilise get_valid_moves → "Coup invalide" en boucle.
-        for hole in Rules.get_valid_moves(self.board, self.current_player):
-            child = Game()
-            child.board = self.board.copy()
-            child.score_p1 = self.score_p1
-            child.score_p2 = self.score_p2
-            child.current_player = self.current_player
-            child.play_move(hole)
-            children.append(child)
+        for hole in range(12):
+            if hole in Rules.get_valid_moves(self.board, self.current_player):
+                child = Game()
+                child.board = self.board.copy()
+                child.score_p1 = self.score_p1
+                child.score_p2 = self.score_p2
+                child.current_player = self.current_player
+
+                if child.play_move(hole) :
+                    children.append(child)
 
         return children
 

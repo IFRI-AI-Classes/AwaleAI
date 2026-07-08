@@ -17,20 +17,9 @@ AGENT_NAMES = {
 }
 
 game = Game()
+AI_PLAYER = 1  # L'IA joue en tant que joueur 1
 
-# MODIF : détection de répétition de position.
-# Sans ce mécanisme, les deux agents peuvent tourner en boucle
-# sur le même état indéfiniment quand aucun n'arrive à capturer.
-# On stocke chaque état vu ; si le même réapparaît → nulle.
-historique = set()
-MAX_TOURS  = 300   # filet de sécurité absolu
-
-print("=== AwaleAI — Minimax vs Alpha-beta ===")
-print(f"  J1 : {AGENT_NAMES[1]}")
-print(f"  J2 : {AGENT_NAMES[2]}")
-print("=" * 40)
-
-for tour in range(MAX_TOURS):
+while True:
     game.display()
 
     # MODIF : vérification de répétition avant is_game_over().
@@ -52,14 +41,10 @@ for tour in range(MAX_TOURS):
             print("Résultat : Egalite")
         break
 
-    current = game.current_player
-    print(f"\nTour du Joueur {current} — {AGENT_NAMES[current]}")
-
-    # Joueur 1 : Alpha-beta
-    if current == 1:
-        print("Alpha-beta reflechit...")
-        hole = alpha_beta_move(game, depth=ALPHA_BETA_DEPTH)
-        print(f"Alpha-beta joue la case {hole + 1}")   # ou adapte selon l'indexation
+    if game.current_player == AI_PLAYER:
+        print("L'IA réfléchit...")
+        hole = best_move(game, depth=6)
+        print(f"L'IA joue la case {(hole - 5) if AI_PLAYER == 2 else hole}")  # affichage 1-6
         game.play_move(hole)
 
     # Joueur 2 : Minimax
