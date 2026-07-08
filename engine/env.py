@@ -10,8 +10,3 @@ class AwaleEnv:
     def state(self):
         """Retourne l'état actuel du plateau."""
         return list(self.game.board.holes)
-
-# Test
-env = AwaleEnv()
-etat = env.reset()
-print("État initial :", etat)

@@ -1,5 +1,5 @@
 from engine.game import Game
-from engine.ai.heuristic import evaluate
+from agents.heuristic.heuristic import evaluate
 
 game = Game()
 print("Score initial (devrait être 0, plateau symétrique) :", evaluate(game, 1))

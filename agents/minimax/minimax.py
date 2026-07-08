@@ -1,11 +1,12 @@
-from dataclasses import dataclass
+from agents.heuristic.heuristic import heuristic
 
-@dataclass
+
 class SearchState:
-    holes: list      # 12 cases, copie de travail
-    score1: int       # score simulé du joueur 1
-    score2: int       # score simulé du joueur 2
-    player: int       # 1 ou 2, a qui de jouer dans cet etat
+    def __init__(self, holes, score1, score2, player):
+        self.holes  = holes
+        self.score1 = score1
+        self.score2 = score2
+        self.player = player
 
 
 class Minimax:
@@ -44,19 +45,33 @@ class Minimax:
         return best_value, best_move
 
     def legal_moves(self, state):
-        """Les cases jouables : le camp du joueur, non vides."""
-        rng = range(0, 6) if state.player == 1 else range(6, 12)
-        return [h for h in rng if state.holes[h] > 0]
+        """
+        Les cases jouables pour state.player.
+        MODIF : remplace le simple check holes[h] > 0 par Rules.get_valid_moves,
+        qui gère correctement la règle de nourrissage quand le camp adverse est vide.
+        On fabrique un FakeBoard car Rules attend un objet avec .holes et .copy().
+        """
+        from engine.rules import Rules
+        import copy
+
+        class FakeBoard:
+            def __init__(self, holes):
+                self.holes = holes
+
+            def copy(self):
+                return FakeBoard(copy.deepcopy(self.holes))
+
+        return Rules.get_valid_moves(FakeBoard(state.holes), state.player)
 
     def apply_move(self, state, hole):
-        """Simule un coup complet : semis + capture. Retourne un NOUVEL etat."""
+        """Simule un coup complet : semis + capture. Retourne un NOUVEL état."""
         holes = state.holes[:]
         seeds = holes[hole]
         holes[hole] = 0
         current = hole
         while seeds > 0:
             current = (current + 1) % 12
-            if current == hole:   # on saute la case de depart, comme Rules.sow
+            if current == hole:
                 continue
             holes[current] += 1
             seeds -= 1
@@ -85,12 +100,23 @@ class Minimax:
         return SearchState(holes=holes, score1=score1, score2=score2, player=next_player)
 
     def is_terminal(self, state):
-        """Fin de partie simplifiee : le joueur courant n'a plus de coup possible."""
+        """Fin de partie simplifiée : le joueur courant n'a plus de coup possible."""
         return len(self.legal_moves(state)) == 0
 
     def evaluate(self, state, root_player):
-        """Note du plateau du point de vue de root_player."""
-        if root_player == 1:
-            return state.score1 - state.score2
-        else:
-            return state.score2 - state.score1
+        """
+        Pont entre SearchState et heuristic.evaluate().
+        heuristic attend game.score_p1, game.score_p2, game.board.holes
+        → on fabrique ces objets localement.
+        """
+        class FakeBoard:
+            def __init__(self, holes):
+                self.holes = holes
+
+        class FakeGame:
+            def __init__(self, s):
+                self.score_p1 = s.score1
+                self.score_p2 = s.score2
+                self.board    = FakeBoard(s.holes)
+
+        return heuristic.evaluate(FakeGame(state), root_player)

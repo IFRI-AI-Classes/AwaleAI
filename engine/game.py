@@ -22,12 +22,9 @@ class Game:
             score_p2 (int): score du joueur 2.
             current_player (int): joueur dont c'est le tour (1 ou 2).
         """
-
         self.board = Board()
-
         self.score_p1 = 0
         self.score_p2 = 0
-
         self.current_player = 1
 
     def capture(self, last_hole):
@@ -47,7 +44,6 @@ class Game:
         Returns:
             int: nombre total de graines capturées.
         """
-
         captured = 0
 
         # définir la zone adverse
@@ -56,7 +52,7 @@ class Game:
         else:
             opp_start, opp_end = 0, 6
 
-        # on recule tant qu’on est dans le camp adverse
+        # on recule tant qu'on est dans le camp adverse
         while opp_start <= last_hole < opp_end:
             seeds = self.board.holes[last_hole]
 
@@ -65,7 +61,6 @@ class Game:
 
             captured += seeds
             self.board.holes[last_hole] = 0
-
             last_hole -= 1
 
         return captured
@@ -83,13 +78,11 @@ class Game:
         Args:
             hole (int): case choisie par le joueur.
         """
-
         if hole not in Rules.get_valid_moves(self.board, self.current_player):
             print("Coup invalide.")
             return False
 
         last_hole = Rules.sow(self.board, hole)
-
         captured = self.capture(last_hole)
 
         if self.current_player == 1:
@@ -98,7 +91,6 @@ class Game:
             self.score_p2 += captured
 
         self.current_player = 2 if self.current_player == 1 else 1
-
         return True
 
     def display(self):
@@ -110,12 +102,9 @@ class Game:
         - les scores ;
         - le joueur dont c'est le tour.
         """
-
         self.board.display()
-
         print(f"Score J1 : {self.score_p1}")
         print(f"Score J2 : {self.score_p2}")
-
         print(f"Tour joueur {self.current_player}")
 
     def get_children(self) -> list:
@@ -127,20 +116,20 @@ class Game:
         Returns:
             list: liste des états enfants (objets Game).
         """
-
         children = []
 
-        for hole in range(12):
-            if Rules.is_valid_move(self.board, hole, self.current_player):
-                child = Game()
-                child.board = self.board.copy()
-                child.score_p1 = self.score_p1
-                child.score_p2 = self.score_p2
-                child.current_player = self.current_player
-
-                child.play_move(hole)
-
-                children.append(child)
+        # MODIF : remplace is_valid_move par get_valid_moves pour respecter
+        # la règle de nourrissage. is_valid_move ignorait le cas où le camp
+        # adverse est vide et forçait un coup nourricier — désaccord avec
+        # play_move qui utilise get_valid_moves → "Coup invalide" en boucle.
+        for hole in Rules.get_valid_moves(self.board, self.current_player):
+            child = Game()
+            child.board = self.board.copy()
+            child.score_p1 = self.score_p1
+            child.score_p2 = self.score_p2
+            child.current_player = self.current_player
+            child.play_move(hole)
+            children.append(child)
 
         return children
 
@@ -155,21 +144,24 @@ class Game:
             return True
 
         if self.score_p1 == 24 and self.score_p2 == 24:
-            return True  # égalité
+            return True
 
         if not Rules.get_valid_moves(self.board, self.current_player):
-            return True  # joueur courant bloqué
+            return True
 
         return False
 
-    def get_winner(self) -> str:
+    def get_winner(self) -> int | None:
         """
         Appelée uniquement si is_game_over() == True.
         Si le joueur courant est bloqué, les graines restantes
         vont à l'autre joueur (règle Awalé classique).
+
+        MODIF : retourne un int (1, 2) ou None pour l'égalité,
+        au lieu d'une chaîne. Permet à main.py d'utiliser
+        directement AGENT_NAMES[winner] sans conversion.
         """
         if not Rules.get_valid_moves(self.board, self.current_player):
-            # Ramasser toutes les graines restantes
             remaining = sum(self.board.holes)
             if self.current_player == 1:
                 self.score_p2 += remaining
@@ -178,9 +170,8 @@ class Game:
             self.board.holes = [0] * 12
 
         if self.score_p1 > self.score_p2:
-            return "Joueur 1"
+            return 1
         elif self.score_p2 > self.score_p1:
-            return "Joueur 2"
+            return 2
         else:
-            return "Égalité"
-        
+            return None
