@@ -1,11 +1,11 @@
 from engine.game import Game
-from agents.heuristic.heuristic import evaluate
+from agents.heuristic.heuristic import heuristic
 
 game = Game()
-print("Score initial (devrait être 0, plateau symétrique) :", evaluate(game, 1))
+print("Score initial (devrait être 0, plateau symétrique) :", heuristic.evaluate(game, 1))
 # Position neutre (déjà testée)
 game_neutre = Game()
-score_neutre = evaluate(game_neutre, 1)
+score_neutre = heuristic.evaluate(game_neutre, 1)
 print("Position neutre :", score_neutre)
 
 # Position forte pour J1 : il a capturé beaucoup de graines
@@ -13,7 +13,7 @@ game_fort = Game()
 game_fort.score_p1 = 20
 game_fort.score_p2 = 2
 
-score_fort = evaluate(game_fort, 1)
+score_fort = heuristic.evaluate(game_fort, 1)
 print("Position forte pour J1 :", score_fort)
 
 # Vérification

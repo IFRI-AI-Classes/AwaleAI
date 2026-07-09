@@ -95,6 +95,64 @@ class AwaleGame {
         this.labelPlayer2.textContent = getDisplayName(this.players.player2);
     }
 
+    /**
+     * Calcule la séquence de cases touchées par un semis depuis `hole`
+     * en suivant le sens +1 % 12 du moteur Python (saute la case de départ
+     * si le tour est assez long pour y revenir).
+     * Retourne un tableau d'index dans l'ordre de distribution.
+     */
+    sowSequence(hole, seedCount) {
+        const seq = [];
+        let current = hole;
+        let seeds = seedCount;
+        while (seeds > 0) {
+            current = (current + 1) % 12;
+            if (current === hole) continue;   // règle Kroo : on saute le départ
+            seq.push(current);
+            seeds--;
+        }
+        return seq;
+    }
+
+    /**
+     * Anime le semis : illumine les cases une par une dans l'ordre de
+     * distribution, puis retire les surlignages.
+     * `boardSnapshot` est le tableau board[] AVANT le coup (pour afficher
+     * l'état intermédiaire +1 graine à chaque case).
+     */
+    async animateSow(hole, seedCount, boardSnapshot, delayMs = 120) {
+        const seq = this.sowSequence(hole, seedCount);
+
+        // Copie de travail du plateau (avant coup) : on vide le départ
+        const working = [...boardSnapshot];
+        working[hole] = 0;
+
+        // Compte combien de graines chaque case reçoit
+        const bonus = new Array(12).fill(0);
+        for (const idx of seq) bonus[idx]++;
+
+        // Affiche le départ vide immédiatement
+        const startPit = document.querySelector(`.pit[data-index="${hole}"]`);
+        if (startPit) this.renderSeeds(startPit, 0);
+
+        // Parcourt case par case
+        for (let step = 0; step < seq.length; step++) {
+            const idx = seq[step];
+            const pitEl = document.querySelector(`.pit[data-index="${idx}"]`);
+            if (!pitEl) continue;
+
+            // +1 graine sur la copie de travail
+            working[idx]++;
+
+            // Surlignage
+            pitEl.classList.add('pit--active');
+            this.renderSeeds(pitEl, working[idx]);
+
+            await new Promise(r => setTimeout(r, delayMs));
+            pitEl.classList.remove('pit--active');
+        }
+    }
+
     renderInitialBoard() {
         const initialSeeds = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
         this.pits.forEach((pit, index) => {
@@ -168,15 +226,18 @@ class AwaleGame {
         }
     }
 
-    addToHistory(playerName, pitIndex, captured) {
+    addToHistory(playerName, pitIndex, captured, playerKey) {
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
-        
-        const captureText = captured > 0 ? ` (+${captured})` : '';
-        
+
+        const captureText = captured > 0 ? ` +${captured}` : '';
+        // Classe de badge selon le joueur (p1 ou p2)
+        const badgeClass = playerKey === 'player1' ? 'badge-p1' : 'badge-p2';
+
         historyItem.innerHTML = `
-            <span class="history-player">${playerName}</span>
-            <span class="history-move">Case ${pitIndex + 1}${captureText}</span>
+            <span class="history-player ${badgeClass}">${playerName}</span>
+            <span class="history-move">Case ${pitIndex + 1}</span>
+            ${captured > 0 ? `<span class="history-capture">${captureText}</span>` : ''}
         `;
         
         const emptyMessage = this.moveHistoryContainer.querySelector('.empty-history');
@@ -218,51 +279,37 @@ class AwaleGame {
         this.clearHistory();
         
         try {
-            // TODO: Connect FastAPI endpoint
-            // const response = await fetch(`${this.apiBaseUrl}/api/game/start`, {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //     },
-            //     body: JSON.stringify({
-            //         player1: {
-            //             name: player1Name,
-            //             type: player1Type,
-            //             algorithm: player1Type === 'ai' ? player1Algorithm : null
-            //         },
-            //         player2: {
-            //             name: player2Name,
-            //             type: player2Type,
-            //             algorithm: player2Type === 'ai' ? player2Algorithm : null
-            //         }
-            //     })
-            // });
-            
-            // const data = await response.json();
-            // this.gameState = data;
-            
-            // Simulated response for testing
-            this.gameState = {
-                board: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-                scores: { player1: 0, player2: 0 },
-                granaries: { player1: 0, player2: 0 },
-                current_player: 'player1',
-                game_over: false,
-                winner: null,
-                move_history: []
-            };
-            
+            const response = await fetch(`${this.apiBaseUrl}/api/game/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player1: {
+                        name: player1Name,
+                        type: player1Type,
+                        algorithm: player1Type === 'ai' ? player1Algorithm : null
+                    },
+                    player2: {
+                        name: player2Name,
+                        type: player2Type,
+                        algorithm: player2Type === 'ai' ? player2Algorithm : null
+                    }
+                })
+            });
+
+            const data = await response.json();
+            this.gameState = data;
+
             this.renderGameState();
             this.updateStatus(`Tour de ${this.players[this.gameState.current_player].name}`);
-            
+
             // Auto-play AI if both players are AI
             if (this.players.player1.type === 'ai' && this.players.player2.type === 'ai') {
                 setTimeout(() => this.playAI(), 1000);
             }
-            
+
         } catch (error) {
             console.error('Error starting game:', error);
-            this.updateStatus('Erreur lors de l\'initialisation');
+            this.updateStatus('Erreur lors de l\'initialisation — le serveur est-il lancé ?');
         }
     }
 
@@ -283,39 +330,50 @@ class AwaleGame {
         this.updateStatus('Envoi du coup...');
         
         try {
-            // TODO: Connect FastAPI endpoint
-            // const response = await fetch(`${this.apiBaseUrl}/api/game/move`, {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //     },
-            //     body: JSON.stringify({
-            //         pit_index: pitIndex,
-            //         player: currentPlayerKey
-            //     })
-            // });
-            
-            // const data = await response.json();
-            // this.gameState = data;
-            
-            // Simulated response for testing
-            const captured = Math.floor(Math.random() * 5);
-            this.gameState.board[pitIndex] = 0;
-            this.gameState.scores[currentPlayerKey] += captured;
-            this.gameState.granaries[currentPlayerKey] += captured;
-            this.gameState.current_player = currentPlayerKey === 'player1' ? 'player2' : 'player1';
-            
+            const response = await fetch(`${this.apiBaseUrl}/api/game/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pit_index: pitIndex,
+                    player: currentPlayerKey
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                this.updateStatus(`Coup invalide : ${err.detail}`);
+                return;
+            }
+
+            const scoresBefore = this.gameState
+                ? { ...this.gameState.scores }
+                : { player1: 0, player2: 0 };
+
+            // Anime le semis AVANT d'appliquer l'état final
+            const seedCount = this.gameState.board[pitIndex];
+            const boardSnapshot = [...this.gameState.board];
+            const newState = await response.json();
+
+            await this.animateSow(pitIndex, seedCount, boardSnapshot);
+
+            this.gameState = newState;
+
+            const captured = (this.gameState.scores[currentPlayerKey] || 0)
+                           - (scoresBefore[currentPlayerKey] || 0);
+
             this.renderGameState();
-            this.addToHistory(currentPlayer.name, pitIndex, captured);
-            
+            this.addToHistory(currentPlayer.name, pitIndex, captured, currentPlayerKey);
+
+            if (this.gameState.game_over) return;
+
             const nextPlayer = this.players[this.gameState.current_player];
             this.updateStatus(`Tour de ${nextPlayer.name}`);
-            
+
             // Auto-play AI if next player is AI
             if (nextPlayer.type === 'ai') {
                 setTimeout(() => this.playAI(), 1000);
             }
-            
+
         } catch (error) {
             console.error('Error sending move:', error);
             this.updateStatus('Erreur lors de l\'envoi du coup');
@@ -339,55 +397,52 @@ class AwaleGame {
         this.updateStatus(`${currentPlayer.name} réfléchit...`);
         
         try {
-            // TODO: Connect FastAPI endpoint
-            // const response = await fetch(`${this.apiBaseUrl}/api/game/ai-move`, {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //     },
-            //     body: JSON.stringify({
-            //         player: currentPlayerKey,
-            //         algorithm: currentPlayer.algorithm,
-            //         board: this.gameState.board
-            //     })
-            // });
-            
-            // const data = await response.json();
-            // this.gameState = data.game_state;
-            // this.updateTelemetry(data.telemetry);
-            
-            // Simulated response for testing
-            const validPits = this.gameState.board
-                .map((seeds, index) => seeds > 0 ? index : -1)
-                .filter(index => index !== -1);
-            
-            const pitIndex = validPits[Math.floor(Math.random() * validPits.length)];
-            const captured = Math.floor(Math.random() * 5);
-            
-            this.gameState.board[pitIndex] = 0;
-            this.gameState.scores[currentPlayerKey] += captured;
-            this.gameState.granaries[currentPlayerKey] += captured;
-            this.gameState.current_player = currentPlayerKey === 'player1' ? 'player2' : 'player1';
-            
-            // Simulated telemetry
-            this.updateTelemetry({
-                computation_time: Math.floor(Math.random() * 500) + 50,
-                depth: Math.floor(Math.random() * 10) + 3,
-                nodes_explored: Math.floor(Math.random() * 10000) + 1000,
-                win_rate: 0.5 + Math.random() * 0.3
+            const scoresBefore = { ...this.gameState.scores };
+
+            const response = await fetch(`${this.apiBaseUrl}/api/game/ai-move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player: currentPlayerKey,
+                    algorithm: currentPlayer.algorithm,
+                    board: this.gameState.board
+                })
             });
-            
+
+            if (!response.ok) {
+                const err = await response.json();
+                this.updateStatus(`Erreur IA : ${err.detail}`);
+                return;
+            }
+
+            const data = await response.json();
+            const pitIndex = data.telemetry.pit_played;
+
+            // Anime le semis AVANT d'appliquer l'état final
+            const seedCount = this.gameState.board[pitIndex];
+            const boardSnapshot = [...this.gameState.board];
+
+            await this.animateSow(pitIndex, seedCount, boardSnapshot);
+
+            this.gameState = data.game_state;
+            this.updateTelemetry(data.telemetry);
+
+            const captured = (this.gameState.scores[currentPlayerKey] || 0)
+                           - (scoresBefore[currentPlayerKey] || 0);
+
             this.renderGameState();
-            this.addToHistory(currentPlayer.name, pitIndex, captured);
-            
+            this.addToHistory(currentPlayer.name, pitIndex, captured, currentPlayerKey);
+
+            if (this.gameState.game_over) return;
+
             const nextPlayer = this.players[this.gameState.current_player];
             this.updateStatus(`Tour de ${nextPlayer.name}`);
-            
+
             // Auto-play AI if next player is also AI
-            if (nextPlayer.type === 'ai' && !this.gameState.game_over) {
+            if (nextPlayer.type === 'ai') {
                 setTimeout(() => this.playAI(), 1000);
             }
-            
+
         } catch (error) {
             console.error('Error playing AI move:', error);
             this.updateStatus('Erreur lors du coup de l\'IA');

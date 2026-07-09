@@ -1,6 +1,6 @@
 import math
 from typing import Optional
-from ..rules import Rules
+from engine.rules import Rules
 from engine.game import Game
 from agents.heuristic.heuristic import heuristic
 

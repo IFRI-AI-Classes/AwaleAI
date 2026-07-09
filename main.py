@@ -3,9 +3,9 @@ from agents.alpha_beta.elagage import best_move as alpha_beta_move
 from agents.minimax.minimax import Minimax
 
 # Configuration des agents
-MINIMAX_DEPTH    = 7
+MINIMAX_DEPTH    = 4
 
-ALPHA_BETA_DEPTH = 7
+ALPHA_BETA_DEPTH = 4
 
 minimax_agent = Minimax(depth=MINIMAX_DEPTH)
 
@@ -18,12 +18,16 @@ AGENT_NAMES = {
 
 game = Game()
 AI_PLAYER = 1  # L'IA joue en tant que joueur 1
+historique = set()
+MAX_TOURS = 500
+tour = 0
 
-while True:
+for _ in range(MAX_TOURS):
     game.display()
 
     # MODIF : vérification de répétition avant is_game_over().
     # L'état est un tuple (plateau, score_j1, score_j2, joueur_courant).
+    tour += 1
     etat = (tuple(game.board.holes), game.score_p1, game.score_p2, game.current_player)
     if etat in historique:
         print("\n=== Nulle par répétition de position ===")
@@ -43,7 +47,7 @@ while True:
 
     if game.current_player == AI_PLAYER:
         print("L'IA réfléchit...")
-        hole = best_move(game, depth=6)
+        hole = alpha_beta_move(game, depth=6)
         print(f"L'IA joue la case {(hole - 5) if AI_PLAYER == 2 else hole}")  # affichage 1-6
         game.play_move(hole)
 
@@ -55,6 +59,6 @@ while True:
         game.play_move(hole)
 
 else:
-    # MODIF : atteint uniquement si MAX_TOURS est dépassé sans fin détectée.
+    # Atteint uniquement si MAX_TOURS est dépassé sans fin détectée.
     print(f"\n=== Partie interrompue après {MAX_TOURS} tours ===")
     print(f"Score final — J1 : {game.score_p1} | J2 : {game.score_p2}")
