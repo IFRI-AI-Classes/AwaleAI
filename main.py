@@ -1,23 +1,35 @@
 from engine.game import Game
-from agents.alpha_beta.elagage import best_move as alpha_beta_move
-from agents.minimax.minimax import Minimax
+from agents import difficulty
 
-# Configuration des agents
-MINIMAX_DEPTH    = 4
+# ─────────────────────────────────────────────────────────────────
+# Choix des niveaux de difficulté pour chaque joueur
+# ─────────────────────────────────────────────────────────────────
+NIVEAUX_DISPONIBLES = ["facile", "moyen", "difficile", "expert"]
 
-ALPHA_BETA_DEPTH = 4
+print("=======NIVEAUX DE JEU=======")
+for niveau in NIVEAUX_DISPONIBLES:
+    print(niveau)
 
-minimax_agent = Minimax(depth=MINIMAX_DEPTH)
+def demander_niveau(nom_joueur: str) -> str:
+    """Redemande tant que le niveau saisi n'est pas valide."""
+    while True:
+        choix = input(f"Choisissez le niveau pour {nom_joueur} : ").strip().lower()
+        if choix in NIVEAUX_DISPONIBLES:
+            return choix
+        print(f"Niveau inconnu. Choix possibles : {NIVEAUX_DISPONIBLES}")
 
-# Joueur 1 : Minimax
-# Joueur 2 : Alpha-beta
+level_p1 = demander_niveau("Joueur 1")
+level_p2 = demander_niveau("Joueur 2")
+
 AGENT_NAMES = {
-    1: f"Alpha-beta  (profondeur {ALPHA_BETA_DEPTH})",
-    2: f"Minimax     (profondeur {MINIMAX_DEPTH})",
+    1: f"Joueur 1 ({level_p1})",
+    2: f"Joueur 2 ({level_p2})",
 }
 
+# ─────────────────────────────────────────────────────────────────
+# Boucle de jeu
+# ─────────────────────────────────────────────────────────────────
 game = Game()
-AI_PLAYER = 1  # L'IA joue en tant que joueur 1
 historique = set()
 MAX_TOURS = 500
 tour = 0
@@ -25,8 +37,6 @@ tour = 0
 for _ in range(MAX_TOURS):
     game.display()
 
-    # MODIF : vérification de répétition avant is_game_over().
-    # L'état est un tuple (plateau, score_j1, score_j2, joueur_courant).
     tour += 1
     etat = (tuple(game.board.holes), game.score_p1, game.score_p2, game.current_player)
     if etat in historique:
@@ -45,20 +55,14 @@ for _ in range(MAX_TOURS):
             print("Résultat : Egalite")
         break
 
-    if game.current_player == AI_PLAYER:
-        print("L'IA réfléchit...")
-        hole = alpha_beta_move(game, depth=6)
-        print(f"L'IA joue la case {(hole - 5) if AI_PLAYER == 2 else hole}")  # affichage 1-6
-        game.play_move(hole)
+    # Le niveau à utiliser dépend du joueur dont c'est le tour
+    level_courant = level_p1 if game.current_player == 1 else level_p2
 
-    # Joueur 2 : Minimax
-    else:
-        print("Minimax reflechit...")
-        hole = minimax_agent.choose_move(game.board, player=2)
-        print(f"Minimax joue la case {hole + 1}")
-        game.play_move(hole)
+    print(f"{AGENT_NAMES[game.current_player]} réfléchit...")
+    hole = difficulty.choose_move(game, level_courant)
+    print(f"{AGENT_NAMES[game.current_player]} joue la case {hole}")
+    game.play_move(hole)
 
 else:
-    # Atteint uniquement si MAX_TOURS est dépassé sans fin détectée.
     print(f"\n=== Partie interrompue après {MAX_TOURS} tours ===")
     print(f"Score final — J1 : {game.score_p1} | J2 : {game.score_p2}")

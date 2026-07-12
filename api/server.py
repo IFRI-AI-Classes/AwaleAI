@@ -19,13 +19,10 @@ from pydantic import BaseModel
 
 from engine.game import Game
 from engine.rules import Rules
-from agents.alpha_beta.elagage import best_move as alpha_beta_move
-from agents.minimax.minimax import Minimax
-from agents.random.random_agent import random_move
+from agents import difficulty  # ← module centralisé niveau → agent/profondeur
 
 app = FastAPI(title="AwaleAI API", version="1.0.0")
 
-# Autoriser le frontend local (fichier ou serveur de dev)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,18 +31,13 @@ app.add_middleware(
 )
 
 # ─── Session de jeu unique en mémoire ───────────────────────────────────────
-# Pour une démo mono-utilisateur ; étendre avec un dict de sessions si besoin.
 _game: Optional[Game] = None
 _player_configs: dict = {}
-
-MINIMAX_DEPTH    = 7
-ALPHABETA_DEPTH  = 7
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _game_to_state(game: Game) -> dict:
-    """Sérialise l'état courant du jeu au format attendu par app.js."""
     return {
         "board": list(game.board.holes),
         "scores": {
@@ -64,7 +56,6 @@ def _game_to_state(game: Game) -> dict:
 
 
 def _get_winner_key(game: Game) -> Optional[str]:
-    """Retourne 'player1', 'player2' ou None si la partie n'est pas terminée."""
     if not game.is_game_over():
         return None
     winner = game.get_winner()
@@ -72,7 +63,7 @@ def _get_winner_key(game: Game) -> Optional[str]:
         return "player1"
     if winner == 2:
         return "player2"
-    return None  # égalité
+    return None
 
 
 def _player_key_to_int(key: str) -> int:
@@ -84,7 +75,7 @@ def _player_key_to_int(key: str) -> int:
 class PlayerConfig(BaseModel):
     name: str = "Joueur"
     type: str = "human"          # "human" | "ai"
-    algorithm: Optional[str] = None  # "random" | "minimax" | "alphabeta" | "qlearning"
+    level: Optional[str] = None  # "facile" | "moyen" | "difficile" | "expert"
 
 
 class StartRequest(BaseModel):
@@ -94,23 +85,19 @@ class StartRequest(BaseModel):
 
 class MoveRequest(BaseModel):
     pit_index: int
-    player: str   # "player1" | "player2"
+    player: str
 
 
 class AIMoveRequest(BaseModel):
     player: str
-    algorithm: str
-    board: list[int]  # non utilisé directement (on utilise _game), fourni par le front
+    level: str  # ← anciennement "algorithm", renommé pour refléter le vrai contenu
+    board: list[int]  # non utilisé directement (on utilise _game)
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
 
 @app.post("/api/game/start")
 def start_game(req: StartRequest):
-    """
-    Démarre une nouvelle partie.
-    Stocke la configuration des joueurs et retourne l'état initial.
-    """
     global _game, _player_configs
 
     _game = Game()
@@ -124,10 +111,6 @@ def start_game(req: StartRequest):
 
 @app.post("/api/game/move")
 def human_move(req: MoveRequest):
-    """
-    Applique le coup d'un joueur humain.
-    Retourne le nouvel état du jeu.
-    """
     global _game
 
     if _game is None:
@@ -157,8 +140,9 @@ def human_move(req: MoveRequest):
 @app.post("/api/game/ai-move")
 def ai_move(req: AIMoveRequest):
     """
-    Fait jouer l'IA selon l'algorithme demandé.
-    Retourne le nouvel état + la télémétrie (temps, profondeur, nœuds si disponible).
+    Fait jouer l'IA selon le NIVEAU demandé (facile/moyen/difficile/expert).
+    Toute la logique d'aiguillage vers le bon agent + profondeur vit dans
+    agents/difficulty.py — server.py ne fait que la consulter.
     """
     global _game
 
@@ -168,36 +152,23 @@ def ai_move(req: AIMoveRequest):
     if _game.is_game_over():
         raise HTTPException(status_code=400, detail="La partie est terminée.")
 
-    algorithm = req.algorithm.lower()
-    depth_used = None
-    nodes_explored = None
+    level = req.level.lower()
+
+    if level not in difficulty.LEVELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Niveau inconnu : '{req.level}'. Niveaux disponibles : {list(difficulty.LEVELS.keys())}"
+        )
+
+    config = difficulty.LEVELS[level]
+    depth_used = config["depth"]  # None pour "facile" (random)
 
     start_time = time.time()
-
-    if algorithm == "random":
-        hole = random_move(_game)
-
-    elif algorithm == "minimax":
-        depth_used = MINIMAX_DEPTH
-        agent = Minimax(depth=depth_used)
-        hole = agent.choose_move(_game.board, player=_game.current_player)
-
-    elif algorithm == "alphabeta":
-        depth_used = ALPHABETA_DEPTH
-        hole = alpha_beta_move(_game, depth=depth_used)
-
-    elif algorithm == "qlearning":
-        # Phase 3 non implémentée : repli sur l'agent aléatoire
-        hole = random_move(_game)
-        algorithm = "random (qlearning not yet implemented)"
-
-    else:
-        raise HTTPException(status_code=400, detail=f"Algorithme inconnu : {req.algorithm}")
+    hole = difficulty.choose_move(_game, level)
+    elapsed_ms = round((time.time() - start_time) * 1000, 1)
 
     if hole is None:
         raise HTTPException(status_code=400, detail="L'IA n'a trouvé aucun coup valide.")
-
-    elapsed_ms = round((time.time() - start_time) * 1000, 1)
 
     pit_played = hole
     _game.play_move(hole)
@@ -205,9 +176,10 @@ def ai_move(req: AIMoveRequest):
     telemetry = {
         "computation_time": elapsed_ms,
         "depth": depth_used,
-        "nodes_explored": nodes_explored,
+        "nodes_explored": None,
         "win_rate": None,
-        "algorithm": algorithm,
+        "level": level,
+        "agent": config["agent"],
         "pit_played": pit_played,
     }
 

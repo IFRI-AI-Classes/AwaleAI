@@ -7,8 +7,8 @@ class AwaleGame {
         this.apiBaseUrl = 'http://localhost:8000'; // TODO: Update with actual backend URL
         this.gameState = null;
         this.players = {
-            player1: { name: 'Joueur 1', type: 'human', algorithm: null },
-            player2: { name: 'Joueur 2', type: 'human', algorithm: null }
+            player1: { name: 'Joueur 1', type: 'human', level: null },
+            player2: { name: 'Joueur 2', type: 'human', level: null }
         };
         
         this.initializeUI();
@@ -64,21 +64,33 @@ class AwaleGame {
             this.players.player2.name = e.target.value || 'Joueur 2';
             this.updatePlayerLabels();
         });
+
+        // Level change handlers — met à jour players[].level en direct
+        // si l'utilisateur change de niveau APRES avoir sélectionné "IA"
+        document.getElementById('player1-algorithm').addEventListener('change', (e) => {
+            this.players.player1.level = e.target.value;
+            this.updatePlayerLabels();
+        });
+
+        document.getElementById('player2-algorithm').addEventListener('change', (e) => {
+            this.players.player2.level = e.target.value;
+            this.updatePlayerLabels();
+        });
     }
 
     handlePlayerTypeChange(playerKey, type) {
         const aiConfig = document.getElementById(`${playerKey}-ai-config`);
-        const algorithmSelect = document.getElementById(`${playerKey}-algorithm`);
+        const levelSelect = document.getElementById(`${playerKey}-algorithm`);
         
         this.players[playerKey].type = type;
         
         if (type === 'ai') {
             aiConfig.style.display = 'flex';
-            this.players[playerKey].algorithm = algorithmSelect.value;
+            this.players[playerKey].level = levelSelect.value;
             this.updatePlayerLabels();
         } else {
             aiConfig.style.display = 'none';
-            this.players[playerKey].algorithm = null;
+            this.players[playerKey].level = null;
             this.updatePlayerLabels();
         }
     }
@@ -86,7 +98,7 @@ class AwaleGame {
     updatePlayerLabels() {
         const getDisplayName = (player) => {
             if (player.type === 'ai') {
-                return player.algorithm ? `IA ${player.algorithm.charAt(0).toUpperCase() + player.algorithm.slice(1)}` : 'IA';
+                return player.level ? `IA ${player.level.charAt(0).toUpperCase() + player.level.slice(1)}` : 'IA';
             }
             return player.name;
         };
@@ -260,18 +272,18 @@ class AwaleGame {
         const player2Name = document.getElementById('player2-name').value || 'Joueur 2';
         const player1Type = document.getElementById('player1-type').value;
         const player2Type = document.getElementById('player2-type').value;
-        const player1Algorithm = document.getElementById('player1-algorithm').value;
-        const player2Algorithm = document.getElementById('player2-algorithm').value;
+        const player1Level = document.getElementById('player1-algorithm').value;
+        const player2Level = document.getElementById('player2-algorithm').value;
         
         this.players.player1 = {
             name: player1Name,
             type: player1Type,
-            algorithm: player1Type === 'ai' ? player1Algorithm : null
+            level: player1Type === 'ai' ? player1Level : null
         };
         this.players.player2 = {
             name: player2Name,
             type: player2Type,
-            algorithm: player2Type === 'ai' ? player2Algorithm : null
+            level: player2Type === 'ai' ? player2Level : null
         };
         
         this.updatePlayerLabels();
@@ -286,12 +298,12 @@ class AwaleGame {
                     player1: {
                         name: player1Name,
                         type: player1Type,
-                        algorithm: player1Type === 'ai' ? player1Algorithm : null
+                        level: player1Type === 'ai' ? player1Level : null
                     },
                     player2: {
                         name: player2Name,
                         type: player2Type,
-                        algorithm: player2Type === 'ai' ? player2Algorithm : null
+                        level: player2Type === 'ai' ? player2Level : null
                     }
                 })
             });
@@ -404,7 +416,7 @@ class AwaleGame {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     player: currentPlayerKey,
-                    algorithm: currentPlayer.algorithm,
+                    level: currentPlayer.level,
                     board: this.gameState.board
                 })
             });
