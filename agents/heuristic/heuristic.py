@@ -1,11 +1,21 @@
 from engine.rules import Rules
 
-class heuristic():
+
+class heuristic:
+    """Heuristic evaluation helpers for Awalé positions."""
 
     def evaluate(game, player, w_diff=1.0, w_mobility=3.0, w_seeds=0.1):
-        """
-        Évalue la position actuelle du point de vue de 'player' (1 ou 2).
-        Plus le score retourné est élevé, plus la position est favorable à 'player'.
+        """Evaluate the position from a player's perspective.
+
+        Args:
+            game: Current game state.
+            player: Player number used as the evaluation reference.
+            w_diff: Weight applied to score difference.
+            w_mobility: Weight applied to mobility difference.
+            w_seeds: Weight applied to seeds in the opponent camp.
+
+        Returns:
+            float: Higher values mean a better position for the player.
         """
         opponent = 2 if player == 1 else 1
 
@@ -14,16 +24,16 @@ class heuristic():
         else:
             diff = game.score_p2 - game.score_p1
 
-        my_mobility  = heuristic.count_valid_moves(game.board, player)   # ← fix
-        opp_mobility = heuristic.count_valid_moves(game.board, opponent)  # ← fix
+        my_mobility = heuristic.count_valid_moves(game.board, player)
+        opp_mobility = heuristic.count_valid_moves(game.board, opponent)
         mobility_score = my_mobility - opp_mobility
 
-        opp_seeds = heuristic.seeds_in_opponent_camp(game.board, player)  # ← fix
+        opp_seeds = heuristic.seeds_in_opponent_camp(game.board, player)
 
         return (w_diff * diff) + (w_mobility * mobility_score) + (w_seeds * opp_seeds)
 
     def count_valid_moves(board, player):
-        """Compte le nombre de coups valides pour 'player'."""
+        """Count the legal moves for a player."""
         count = 0
         for hole in range(12):
             if Rules.is_valid_move(board, hole, player):
@@ -31,7 +41,7 @@ class heuristic():
         return count
 
     def seeds_in_opponent_camp(board, player):
-        """Compte les graines présentes dans le camp adverse."""
+        """Count seeds currently placed in the opponent camp."""
         if player == 1:
             opponent_holes = range(6, 12)
         else:

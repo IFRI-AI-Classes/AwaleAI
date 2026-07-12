@@ -3,14 +3,13 @@ from engine.rules import Rules
 
 
 def random_move(game) -> int:
-    """
-    Choisit un coup aléatoire parmi les coups valides du joueur courant.
+    """Choose a random legal move for the current player.
 
     Args:
-        game: instance de Game représentant l'état actuel.
+        game: Current Game instance.
 
     Returns:
-        int: indice de la case choisie aléatoirement.
+        int: Randomly selected hole index.
     """
     valid_moves = Rules.get_valid_moves(game.board, game.current_player)
     return random.choice(valid_moves)

@@ -1,12 +1,22 @@
 from engine.game import Game
 
+
 class AwaleEnv:
+    """Minimal environment wrapper around Game."""
 
     def reset(self):
-        """Démarre une nouvelle partie. Retourne l'état initial."""
+        """Start a new game.
+
+        Returns:
+            list: Initial board state.
+        """
         self.game = Game()
         return list(self.game.board.holes)
 
     def state(self):
-        """Retourne l'état actuel du plateau."""
+        """Return the current board state.
+
+        Returns:
+            list: Current board state.
+        """
         return list(self.game.board.holes)
