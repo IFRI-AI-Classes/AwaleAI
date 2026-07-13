@@ -1,160 +1,202 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Awalé AI - IFRI</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="app-container">
-        <header class="header">
-            <h1 class="title">Awalé AI</h1>
-            <p class="subtitle">Club IA & IoT - IFRI</p>
-        </header>
+      <header class="header">
+        <h1 class="title">Awalé AI</h1>
+        <p class="subtitle">Club IA & IoT - IFRI</p>
+      </header>
 
-        <main class="main-content">
-            <section class="game-section">
-                <div class="scores-container">
-                    <div class="score-box player2">
-                        <span class="score-label" id="label-player2">Joueur 2</span>
-                        <span class="score-value" id="score-player2">0</span>
-                    </div>
-                    <div class="score-box player1">
-                        <span class="score-label" id="label-player1">Joueur 1</span>
-                        <span class="score-value" id="score-player1">0</span>
-                    </div>
+      <main class="main-content">
+        <section class="game-section">
+          <div class="scores-container">
+            <div class="score-box player2">
+              <span class="score-label" id="label-player2">Joueur 2</span>
+              <span class="score-value" id="score-player2">0</span>
+            </div>
+            <div class="score-box player1">
+              <span class="score-label" id="label-player1">Joueur 1</span>
+              <span class="score-value" id="score-player1">0</span>
+            </div>
+          </div>
+
+          <div class="board-container">
+            <div class="board">
+              <div class="granary granary-left" id="granary-player2">
+                <div class="granary-inner">
+                  <div class="granary-seeds" id="granary-seeds-player2"></div>
                 </div>
-
-                <div class="board-container">
-                    <div class="board">
-                        <div class="granary granary-left" id="granary-player2">
-                            <div class="granary-inner">
-                                <div class="granary-seeds" id="granary-seeds-player2"></div>
-                            </div>
-                        </div>
-                        <div class="pits-container">
-                            <div class="pits-row top-row">
-                                <div class="pit" data-index="11"><div class="seeds"></div></div>
-                                <div class="pit" data-index="10"><div class="seeds"></div></div>
-                                <div class="pit" data-index="9"><div class="seeds"></div></div>
-                                <div class="pit" data-index="8"><div class="seeds"></div></div>
-                                <div class="pit" data-index="7"><div class="seeds"></div></div>
-                                <div class="pit" data-index="6"><div class="seeds"></div></div>
-                            </div>
-                            <div class="pits-row bottom-row">
-                                <div class="pit" data-index="0"><div class="seeds"></div></div>
-                                <div class="pit" data-index="1"><div class="seeds"></div></div>
-                                <div class="pit" data-index="2"><div class="seeds"></div></div>
-                                <div class="pit" data-index="3"><div class="seeds"></div></div>
-                                <div class="pit" data-index="4"><div class="seeds"></div></div>
-                                <div class="pit" data-index="5"><div class="seeds"></div></div>
-                            </div>
-                        </div>
-                        <div class="granary granary-right" id="granary-player1">
-                            <div class="granary-inner">
-                                <div class="granary-seeds" id="granary-seeds-player1"></div>
-                            </div>
-                        </div>
-                    </div>
+              </div>
+              <div class="pits-container">
+                <div class="pits-row top-row">
+                  <div class="pit" data-index="11">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="10">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="9">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="8">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="7">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="6">
+                    <div class="seeds"></div>
+                  </div>
                 </div>
-
-                <div class="controls-container">
-                    <div class="player-setup">
-                        <div class="player-config player1-config">
-                            <h4 class="player-config-title">Joueur 1</h4>
-                            <div class="config-row">
-                                <label for="player1-type">Type</label>
-                                <select id="player1-type" class="player-type-select">
-                                    <option value="human">Humain</option>
-                                    <option value="ai">IA</option>
-                                </select>
-                            </div>
-                            <div class="config-row">
-                                <label for="player1-name">Nom</label>
-                                <input type="text" id="player1-name" class="player-name-input" placeholder="Joueur 1">
-                            </div>
-                            <div class="config-row ai-config-row" id="player1-ai-config" style="display: none;">
-                                <label for="player1-algorithm">Niveau</label>
-                                <select id="player1-algorithm" class="ai-algorithm-select">
-                                    <option value="facile">Facile 😏</option>
-                                    <option value="moyen">Moyen 😎</option>
-                                    <option value="difficile" selected>Difficile 😬</option>
-                                    <option value="expert">Expert 🔥 </option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="vs-divider">VS</div>
-
-                        <div class="player-config player2-config">
-                            <h4 class="player-config-title">Joueur 2</h4>
-                            <div class="config-row">
-                                <label for="player2-type">Type</label>
-                                <select id="player2-type" class="player-type-select">
-                                    <option value="human" selected>Humain</option>
-                                    <option value="ai">IA</option>
-                                </select>
-                            </div>
-                            <div class="config-row">
-                                <label for="player2-name">Nom</label>
-                                <input type="text" id="player2-name" class="player-name-input" placeholder="Joueur 2">
-                            </div>
-                            <div class="config-row ai-config-row" id="player2-ai-config" style="display: none;">
-                                <label for="player2-algorithm">Niveau</label>
-                                <select id="player2-algorithm" class="ai-algorithm-select">
-                                    <option value="facile">Facile 😏</option>
-                                    <option value="moyen">Moyen 😎</option>
-                                    <option value="difficile" selected>Difficile 😬</option>
-                                    <option value="expert">Expert 🔥 </option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="buttons-container">
-                        <button class="btn btn-primary" id="btn-new-game">Nouvelle partie</button>
-                        <button class="btn btn-secondary" id="btn-ai-play">IA joue</button>
-                    </div>
+                <div class="pits-row bottom-row">
+                  <div class="pit" data-index="0">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="1">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="2">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="3">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="4">
+                    <div class="seeds"></div>
+                  </div>
+                  <div class="pit" data-index="5">
+                    <div class="seeds"></div>
+                  </div>
                 </div>
-            </section>
-
-            <aside class="sidebar">
-                <div class="telemetry-panel">
-                    <h3 class="panel-title">Télémétrie</h3>
-                    <div class="telemetry-item">
-                        <span class="telemetry-label">Temps de calcul</span>
-                        <span class="telemetry-value" id="telemetry-time">--</span>
-                    </div>
-                    <div class="telemetry-item">
-                        <span class="telemetry-label">Profondeur</span>
-                        <span class="telemetry-value" id="telemetry-depth">--</span>
-                    </div>
-                    <div class="telemetry-item">
-                        <span class="telemetry-label">Nœuds explorés</span>
-                        <span class="telemetry-value" id="telemetry-nodes">--</span>
-                    </div>
-                    <div class="telemetry-item">
-                        <span class="telemetry-label">Taux de victoire</span>
-                        <span class="telemetry-value" id="telemetry-winrate">--</span>
-                    </div>
+              </div>
+              <div class="granary granary-right" id="granary-player1">
+                <div class="granary-inner">
+                  <div class="granary-seeds" id="granary-seeds-player1"></div>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <div class="history-panel">
-                    <h3 class="panel-title">Historique des coups</h3>
-                    <div class="history-list" id="move-history">
-                        <p class="empty-history">Aucun coup joué</p>
-                    </div>
+          <div class="controls-container">
+            <div class="player-setup">
+              <div class="player-config player1-config">
+                <h4 class="player-config-title">Joueur 1</h4>
+                <div class="config-row">
+                  <label for="player1-type">Type</label>
+                  <select id="player1-type" class="player-type-select">
+                    <option value="human">Humain</option>
+                    <option value="ai">IA</option>
+                  </select>
                 </div>
+                <div class="config-row">
+                  <label for="player1-name">Nom</label>
+                  <input
+                    type="text"
+                    id="player1-name"
+                    class="player-name-input"
+                    placeholder="Joueur 1"
+                  />
+                </div>
+                <div class="config-row ai-config-row" id="player1-ai-config">
+                  <label for="player1-algorithm">Niveau</label>
+                  <select id="player1-algorithm" class="ai-algorithm-select">
+                    <option value="facile">Facile 😏</option>
+                    <option value="moyen">Moyen 😎</option>
+                    <option value="difficile" selected>Difficile 😬</option>
+                    <option value="expert">Expert 🔥</option>
+                    <option value="qlearning">Q-Learning 🧠</option>
+                  </select>
+                </div>
+              </div>
 
-                <div class="status-panel">
-                    <h3 class="panel-title">Statut</h3>
-                    <p class="status-message" id="game-status">En attente de nouvelle partie</p>
+              <div class="vs-divider">VS</div>
+
+              <div class="player-config player2-config">
+                <h4 class="player-config-title">Joueur 2</h4>
+                <div class="config-row">
+                  <label for="player2-type">Type</label>
+                  <select id="player2-type" class="player-type-select">
+                    <option value="human" selected>Humain</option>
+                    <option value="ai">IA</option>
+                  </select>
                 </div>
-            </aside>
-        </main>
+                <div class="config-row">
+                  <label for="player2-name">Nom</label>
+                  <input
+                    type="text"
+                    id="player2-name"
+                    class="player-name-input"
+                    placeholder="Joueur 2"
+                  />
+                </div>
+                <div class="config-row ai-config-row" id="player2-ai-config">
+                  <label for="player2-algorithm">Niveau</label>
+                  <select id="player2-algorithm" class="ai-algorithm-select">
+                    <option value="facile">Facile 😏</option>
+                    <option value="moyen">Moyen 😎</option>
+                    <option value="difficile" selected>Difficile 😬</option>
+                    <option value="expert">Expert 🔥</option>
+                    <option value="qlearning">Q-Learning 🧠</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="buttons-container">
+              <button class="btn btn-primary" id="btn-new-game">
+                Nouvelle partie
+              </button>
+              <button class="btn btn-secondary" id="btn-ai-play">
+                IA joue
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <div class="telemetry-panel">
+            <h3 class="panel-title">Télémétrie</h3>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Temps de calcul</span>
+              <span class="telemetry-value" id="telemetry-time">--</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Profondeur</span>
+              <span class="telemetry-value" id="telemetry-depth">--</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Nœuds explorés</span>
+              <span class="telemetry-value" id="telemetry-nodes">--</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Taux de victoire</span>
+              <span class="telemetry-value" id="telemetry-winrate">--</span>
+            </div>
+          </div>
+
+          <div class="history-panel">
+            <h3 class="panel-title">Historique des coups</h3>
+            <div class="history-list" id="move-history">
+              <p class="empty-history">Aucun coup joué</p>
+            </div>
+          </div>
+
+          <div class="status-panel">
+            <h3 class="panel-title">Statut</h3>
+            <p class="status-message" id="game-status">
+              En attente de nouvelle partie
+            </p>
+          </div>
+        </aside>
+      </main>
     </div>
 
     <script src="app.js"></script>
-</body>
+  </body>
 </html>

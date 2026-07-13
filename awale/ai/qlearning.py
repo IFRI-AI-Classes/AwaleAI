@@ -16,20 +16,20 @@ from agents.alpha_beta.elagage import best_move as alpha_beta_move
 
 _BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models")
 PATH_LATEST = os.path.join(_BASE_DIR, "q_table_latest.json")
-PATH_BEST   = os.path.join(_BASE_DIR, "q_table_best.json")
+PATH_BEST = os.path.join(_BASE_DIR, "q_table_best.json")
 
-ALPHA         = 0.15   # Taux d'apprentissage
-GAMMA         = 0.95   # Facteur d'actualisation
-EPSILON_START = 1.00   # Epsilon initial
-EPSILON_MIN   = 0.05   # Epsilon plancher
-SAVE_EVERY    = 100    # Sauvegarde toutes les N parties
+ALPHA = 0.15  # Taux d'apprentissage
+GAMMA = 0.95  # Facteur d'actualisation
+EPSILON_START = 1.00  # Epsilon initial
+EPSILON_MIN = 0.05  # Epsilon plancher
+SAVE_EVERY = 100  # Sauvegarde toutes les N parties
 
-R_WIN      =  100.0
-R_LOSS     = -100.0
-R_DRAW     =    0.0
-R_CAPTURE  =    2.0
-R_OPP_CAP =   -2.0
-R_TIME     =   -0.5
+R_WIN = 100.0
+R_LOSS = -100.0
+R_DRAW = 0.0
+R_CAPTURE = 2.0
+R_OPP_CAP = -2.0
+R_TIME = -0.5
 
 
 def encode_state(game: Game) -> str:
@@ -43,20 +43,24 @@ def encode_state(game: Game) -> str:
     """
     p = game.current_player
     if p == 1:
-        my_holes  = game.board.holes[0:6]
+        my_holes = game.board.holes[0:6]
         opp_holes = game.board.holes[6:12]
-        my_score  = game.score_p1
+        my_score = game.score_p1
         opp_score = game.score_p2
     else:
-        my_holes  = game.board.holes[6:12]
+        my_holes = game.board.holes[6:12]
         opp_holes = game.board.holes[0:6]
-        my_score  = game.score_p2
+        my_score = game.score_p2
         opp_score = game.score_p1
 
     return (
-        ",".join(str(h) for h in my_holes) + "|" +
-        ",".join(str(h) for h in opp_holes) + "|" +
-        str(my_score) + "|" + str(opp_score)
+        ",".join(str(h) for h in my_holes)
+        + "|"
+        + ",".join(str(h) for h in opp_holes)
+        + "|"
+        + str(my_score)
+        + "|"
+        + str(opp_score)
     )
 
 
@@ -86,9 +90,9 @@ class QLearningAgent:
         epsilon: float = EPSILON_START,
         epsilon_min: float = EPSILON_MIN,
     ) -> None:
-        self.alpha       = alpha
-        self.gamma       = gamma
-        self.epsilon     = epsilon
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
         self.epsilon_min = epsilon_min
 
         self.q_table: Dict[str, Dict[str, float]] = {}
@@ -158,8 +162,7 @@ class QLearningAgent:
         target = reward
         if not done:
             target += self.gamma * self._max_q(next_state, next_valid_actions)
-        self._set_q(state, action_rel,
-                    q_current + self.alpha * (target - q_current))
+        self._set_q(state, action_rel, q_current + self.alpha * (target - q_current))
 
     def set_epsilon_decay(self, n_episodes: int, start: Optional[float] = None) -> None:
         """Configure the linear epsilon decay over a fixed number of episodes."""
@@ -179,10 +182,10 @@ class QLearningAgent:
         """Save the Q-table and metadata to JSON atomically."""
         self._ensure_models_dir()
         payload = {
-            "epsilon":        self.epsilon,
+            "epsilon": self.epsilon,
             "total_episodes": self.total_episodes,
-            "best_win_rate":  self.best_win_rate,
-            "q_table":        self.q_table,
+            "best_win_rate": self.best_win_rate,
+            "q_table": self.q_table,
         }
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
@@ -197,13 +200,15 @@ class QLearningAgent:
                 try:
                     with open(norm, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                    self.q_table        = data.get("q_table", {})
-                    self.epsilon        = float(data.get("epsilon", EPSILON_START))
+                    self.q_table = data.get("q_table", {})
+                    self.epsilon = float(data.get("epsilon", EPSILON_START))
                     self.total_episodes = int(data.get("total_episodes", 0))
-                    self.best_win_rate  = float(data.get("best_win_rate", 0.0))
-                    print(f"[QLearning] Chargé depuis {os.path.basename(norm)} "
-                          f"| {len(self.q_table)} états | "
-                          f"ε={self.epsilon:.3f} | épisodes={self.total_episodes}")
+                    self.best_win_rate = float(data.get("best_win_rate", 0.0))
+                    print(
+                        f"[QLearning] Chargé depuis {os.path.basename(norm)} "
+                        f"| {len(self.q_table)} états | "
+                        f"ε={self.epsilon:.3f} | épisodes={self.total_episodes}"
+                    )
                     return
                 except (json.JSONDecodeError, KeyError) as exc:
                     print(f"[QLearning] Erreur lecture {norm}: {exc}")
@@ -221,10 +226,10 @@ class QLearningAgent:
 def _opp_captures_after(game: Game, opp_move_fn) -> int:
     """Estimate how many seeds the opponent would capture after a reply."""
     sim = Game()
-    sim.board          = game.board.copy()
-    sim.score_p1       = game.score_p1
-    sim.score_p2       = game.score_p2
-    sim.current_player = game.current_player   # c'est déjà l'adversaire
+    sim.board = game.board.copy()
+    sim.score_p1 = game.score_p1
+    sim.score_p2 = game.score_p2
+    sim.current_player = game.current_player  # c'est déjà l'adversaire
 
     opp = sim.current_player
     score_before = sim.score_p1 if opp == 1 else sim.score_p2
@@ -292,16 +297,14 @@ def run_episode(
 
     winner = game.get_winner()
     terminal_r = (
-        R_WIN  if winner == agent_player else
-        R_DRAW if winner is None else
-        R_LOSS
+        R_WIN if winner == agent_player else R_DRAW if winner is None else R_LOSS
     )
     total_reward += terminal_r
 
     if update_agent and transitions:
         for i, (s, a, r, ns) in enumerate(transitions):
-            done = (i == len(transitions) - 1)
-            tr   = terminal_r if done else 0.0
+            done = i == len(transitions) - 1
+            tr = terminal_r if done else 0.0
             if done:
                 agent.update(s, a, r + tr, "", [], done=True)
             else:
@@ -329,15 +332,15 @@ def run_selfplay_episode(agent: QLearningAgent) -> Tuple[Optional[int], float, f
         if game.is_game_over():
             break
 
-        p     = game.current_player
+        p = game.current_player
         state = encode_state(game)
-        sb    = game.score_p1 if p == 1 else game.score_p2
+        sb = game.score_p1 if p == 1 else game.score_p2
 
         hole = agent.choose_move(game, greedy=False)
-        rel  = encode_action(game, hole)
+        rel = encode_action(game, hole)
         game.play_move(hole)
 
-        sa     = game.score_p1 if p == 1 else game.score_p2
+        sa = game.score_p1 if p == 1 else game.score_p2
         step_r = R_TIME + R_CAPTURE * (sa - sb)
 
         if p == 1:
@@ -348,8 +351,8 @@ def run_selfplay_episode(agent: QLearningAgent) -> Tuple[Optional[int], float, f
             r2 += step_r
 
     winner = game.get_winner()
-    term1  = R_WIN if winner == 1 else (R_DRAW if winner is None else R_LOSS)
-    term2  = R_WIN if winner == 2 else (R_DRAW if winner is None else R_LOSS)
+    term1 = R_WIN if winner == 1 else (R_DRAW if winner is None else R_LOSS)
+    term2 = R_WIN if winner == 2 else (R_DRAW if winner is None else R_LOSS)
     r1 += term1
     r2 += term2
 
@@ -361,7 +364,7 @@ def run_selfplay_episode(agent: QLearningAgent) -> Tuple[Optional[int], float, f
         for i in range(len(trans) - 2, -1, -1):
             s, a, r = trans[i]
             ns, na, _ = trans[i + 1]
-            nq  = agent._get_q(ns, na)
+            nq = agent._get_q(ns, na)
             target = r + agent.gamma * nq
             curr_q = agent._get_q(s, a)
             agent._set_q(s, a, curr_q + agent.alpha * (target - curr_q))
@@ -372,26 +375,33 @@ def run_selfplay_episode(agent: QLearningAgent) -> Tuple[Optional[int], float, f
 
 
 def evaluate_agent(agent: QLearningAgent, n_eval: int = 100) -> float:
-        """Evaluate the agent against a mixed opponent schedule."""
-    def opp_rand(g):  return random_move(g)
-    def opp_ab2(g):   return alpha_beta_move(g, depth=2)
-    def opp_ab3(g):   return alpha_beta_move(g, depth=3)
+    """Evaluate the agent against a mixed opponent schedule."""
 
-    half    = n_eval // 2
+    def opp_rand(g):
+        return random_move(g)
+
+    def opp_ab2(g):
+        return alpha_beta_move(g, depth=2)
+
+    def opp_ab3(g):
+        return alpha_beta_move(g, depth=3)
+
+    half = n_eval // 2
     quarter = n_eval // 4
 
     schedule = (
-        [(1, opp_rand)] * (half // 2) +
-        [(2, opp_rand)] * (half // 2) +
-        [(1, opp_ab2)]  * (quarter // 2) +
-        [(2, opp_ab2)]  * (quarter // 2) +
-        [(1, opp_ab3)]  * (quarter // 2) +
-        [(2, opp_ab3)]  * (quarter // 2)
+        [(1, opp_rand)] * (half // 2)
+        + [(2, opp_rand)] * (half // 2)
+        + [(1, opp_ab2)] * (quarter // 2)
+        + [(2, opp_ab2)] * (quarter // 2)
+        + [(1, opp_ab3)] * (quarter // 2)
+        + [(2, opp_ab3)] * (quarter // 2)
     )
     random.shuffle(schedule)
 
     wins = sum(
-        1 for (pos, fn) in schedule
+        1
+        for (pos, fn) in schedule
         if run_episode(agent, fn, pos, update_agent=False)[0] == pos
     )
     return wins / len(schedule)
@@ -401,8 +411,10 @@ def _champion_check(agent: QLearningAgent, phase_name: str) -> None:
     """Evaluate the agent and persist the best checkpoint if needed."""
     print(f"\n[Champion] Évaluation après {phase_name}…")
     rate = evaluate_agent(agent, n_eval=100)
-    print(f"[Champion] Taux de victoire = {rate:.1%}  "
-          f"(record = {agent.best_win_rate:.1%})")
+    print(
+        f"[Champion] Taux de victoire = {rate:.1%}  "
+        f"(record = {agent.best_win_rate:.1%})"
+    )
     if rate > agent.best_win_rate:
         agent.best_win_rate = rate
         agent.save_best()
@@ -410,7 +422,7 @@ def _champion_check(agent: QLearningAgent, phase_name: str) -> None:
     agent.save_latest()
 
 
-EPSILON_BUMP = 0.15   # Remontée epsilon lors du changement de phase
+EPSILON_BUMP = 0.15  # Remontée epsilon lors du changement de phase
 
 
 def _train_phase(
@@ -434,22 +446,29 @@ def _train_phase(
         agent.decay_epsilon()
         agent.total_episodes += 1
 
-        if winner == pos:       wins   += 1
-        elif winner is None:    draws  += 1
-        else:                   losses += 1
+        if winner == pos:
+            wins += 1
+        elif winner is None:
+            draws += 1
+        else:
+            losses += 1
 
         if ep % SAVE_EVERY == 0:
             agent.save_latest()
             wr = wins / ep
-            print(f"  ep {ep:>5}/{episodes} | ε={agent.epsilon:.4f} | "
-                  f"V={wins} N={draws} D={losses} | "
-                  f"win%={wr:.1%} | {time.time()-t0:.0f}s | "
-                  f"états={len(agent.q_table)}")
+            print(
+                f"  ep {ep:>5}/{episodes} | ε={agent.epsilon:.4f} | "
+                f"V={wins} N={draws} D={losses} | "
+                f"win%={wr:.1%} | {time.time()-t0:.0f}s | "
+                f"états={len(agent.q_table)}"
+            )
 
     agent.save_latest()
     total = wins + draws + losses
-    print(f"\n[Phase {phase_name}] Fin : "
-          f"V={wins}/{total} ({wins/total:.1%})  N={draws}  D={losses}")
+    print(
+        f"\n[Phase {phase_name}] Fin : "
+        f"V={wins}/{total} ({wins/total:.1%})  N={draws}  D={losses}"
+    )
 
 
 def _train_selfplay_phase(
@@ -470,15 +489,20 @@ def _train_selfplay_phase(
         agent.decay_epsilon()
         agent.total_episodes += 1
 
-        if winner == 1:     w1    += 1
-        elif winner == 2:   w2    += 1
-        else:               draws += 1
+        if winner == 1:
+            w1 += 1
+        elif winner == 2:
+            w2 += 1
+        else:
+            draws += 1
 
         if ep % SAVE_EVERY == 0:
             agent.save_latest()
-            print(f"  ep {ep:>5}/{episodes} | ε={agent.epsilon:.4f} | "
-                  f"J1={w1} J2={w2} N={draws} | "
-                  f"{time.time()-t0:.0f}s | états={len(agent.q_table)}")
+            print(
+                f"  ep {ep:>5}/{episodes} | ε={agent.epsilon:.4f} | "
+                f"J1={w1} J2={w2} N={draws} | "
+                f"{time.time()-t0:.0f}s | états={len(agent.q_table)}"
+            )
 
     agent.save_latest()
     total = w1 + w2 + draws
@@ -488,6 +512,7 @@ def _train_selfplay_phase(
 # ===========================================================================
 # Pipeline Curriculum complet
 # ===========================================================================
+
 
 def run_curriculum(agent: Optional[QLearningAgent] = None) -> QLearningAgent:
     """

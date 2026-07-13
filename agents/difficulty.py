@@ -1,8 +1,13 @@
 """Difficulty routing for AwaleAI agents."""
 
+from typing import Optional
+
 from agents.random.random_agent import random_move
 from agents.minimax.minimax import Minimax
 from agents.alpha_beta.elagage import best_move as alpha_beta_move
+from awale.ai.qlearning import QLearningAgent
+
+_qlearning_agent: Optional[QLearningAgent] = None
 
 LEVELS = {
     "facile": {
@@ -21,7 +26,21 @@ LEVELS = {
         "agent": "alphabeta",
         "depth": 8,
     },
+    "qlearning": {
+        "agent": "qlearning",
+        "depth": None,
+    },
 }
+
+
+def _get_qlearning_agent() -> QLearningAgent:
+    """Return a lazily initialized Q-learning agent instance."""
+    global _qlearning_agent
+
+    if _qlearning_agent is None:
+        _qlearning_agent = QLearningAgent()
+
+    return _qlearning_agent
 
 
 def choose_move(game, level: str) -> int:
@@ -56,5 +75,8 @@ def choose_move(game, level: str) -> int:
 
     elif agent_name == "alphabeta":
         return alpha_beta_move(game, depth=depth)
+
+    elif agent_name == "qlearning":
+        return _get_qlearning_agent().choose_move(game, greedy=True)
 
     raise ValueError(f"Agent inconnu configuré pour le niveau '{level}': {agent_name}")
