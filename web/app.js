@@ -62,7 +62,7 @@ class AwaleGame {
         this.granarySeedsPlayer1 = document.getElementById('granary-seeds-player1');
         this.granarySeedsPlayer2 = document.getElementById('granary-seeds-player2');
         this.btnNewGame         = document.getElementById('btn-new-game');
-        this.btnAiPlay          = document.getElementById('btn-ai-play');
+        this.btnStop            = document.getElementById('btn-stop');
 
         // Modale
         this.modalEnd           = document.getElementById('modal-end');
@@ -113,13 +113,12 @@ class AwaleGame {
 
         this.updatePlayerLabels();
         this.renderInitialBoard();
-        this._updateAiButton();
         this.setStatus('En attente de nouvelle partie', 'idle');
     }
 
     attachEventListeners() {
         this.btnNewGame.addEventListener('click', () => this.startGame());
-        this.btnAiPlay.addEventListener('click',  () => this.playAI());
+        this.btnStop.addEventListener('click',    () => this.resetGame());
 
         // Clic sur une case
         this.pits.forEach(pit => {
@@ -182,14 +181,15 @@ class AwaleGame {
         }
 
         this.updatePlayerLabels();
-        this._updateAiButton();
     }
 
     updatePlayerLabels() {
         const getDisplayName = (player) => {
             if (player.type === 'ai') {
                 const label = AGENT_LABELS[player.agent] || player.agent;
-                const depthStr = player.depth != null ? ` — prof. ${player.depth}` : '';
+                // N'afficher la profondeur que si l'agent la supporte (depths non null)
+                const agentHasDepth = AGENT_DEPTHS[player.agent] != null;
+                const depthStr = (agentHasDepth && player.depth != null) ? ` — prof. ${player.depth}` : '';
                 return `${label}${depthStr}`;
             }
             return player.name;
@@ -248,18 +248,6 @@ class AwaleGame {
         return `${depth} — Maître`;
     }
 
-    /** Met à jour la visibilité du bouton "IA joue" */
-    _updateAiButton() {
-        const currentKey = this.gameState ? this.gameState.current_player : null;
-        const currentIsAi = currentKey
-            ? this.players[currentKey].type === 'ai'
-            : (this.players.player1.type === 'ai' || this.players.player2.type === 'ai');
-
-        // Visible uniquement si au moins un des joueurs est IA ET partie active
-        const hasAi = this.players.player1.type === 'ai' || this.players.player2.type === 'ai';
-        this.btnAiPlay.style.display = hasAi ? '' : 'none';
-    }
-
     // ─── Rendu du plateau ─────────────────────────────────────────────────────
 
     renderInitialBoard() {
@@ -302,15 +290,21 @@ class AwaleGame {
      * de recalculer Math.random() à chaque coup.
      */
     _renderGranarySeeds(granaryElement, seedCount) {
+        // La clé de cache inclut l'id de l'élément pour que les deux granaires
+        // (player1 et player2) aient des positions de graines indépendantes,
+        // même quand leurs scores sont identiques.
         const cacheKey = `${granaryElement.id}_${seedCount}`;
-        if (granaryElement.dataset.count == seedCount) return;  // rien à faire
+
+        // Guard anti-redraw : on compare aussi l'id pour éviter que le même
+        // cacheKey ne soit utilisé par les deux éléments lors du premier rendu.
+        if (granaryElement.dataset.cacheKey === cacheKey) return;
 
         granaryElement.innerHTML = '';
-        granaryElement.dataset.count = seedCount;
+        granaryElement.dataset.cacheKey = cacheKey;
 
         if (seedCount === 0) return;
 
-        // Utilise le cache ou calcule et stocke
+        // Utilise le cache ou calcule et stocke des positions aléatoires fixes
         if (!this._granaryCache[cacheKey]) {
             const displayCount = Math.min(seedCount, 50);
             const positions = [];
@@ -611,7 +605,6 @@ class AwaleGame {
 
         if (this.gameState.game_over) {
             this._clearHighlights();
-            this._updateAiButton();
 
             const winner = this.gameState.winner;
             const msg = winner
@@ -619,8 +612,10 @@ class AwaleGame {
                 : 'Match nul !';
             this.setStatus(`Partie terminée — ${msg}`, winner ? 'win' : 'draw');
 
-            // Modale différée de 600ms pour laisser l'animation finir
-            setTimeout(() => this._showVictoryModal(), 600);
+            // Capturer le snapshot MAINTENANT : this.gameState peut être
+            // écrasé pendant les 600ms (ex : clic rapide "Rejouer").
+            const frozenState = this.gameState;
+            setTimeout(() => this._showVictoryModal(frozenState), 600);
             return;
         }
 
@@ -631,14 +626,11 @@ class AwaleGame {
         } else {
             this._clearHighlights();
         }
-
-        this._updateAiButton();
     }
 
     // ─── Modale victoire ─────────────────────────────────────────────────────
 
-    _showVictoryModal() {
-        const gs     = this.gameState;
+    _showVictoryModal(gs = this.gameState) {
         const winner = gs.winner;
         const isDraw = winner === null;
 
@@ -749,9 +741,58 @@ class AwaleGame {
         this.pits.forEach(pit => {
             pit.style.pointerEvents = busy ? 'none' : '';
         });
-        this.btnAiPlay.disabled  = busy;
-        // Le bouton "Nouvelle partie" reste actif même pendant une animation
-        // (on gère le double-clic séparément via disabled pendant le fetch)
+        // "Arrêter la partie" reste TOUJOURS actif pendant la partie,
+        // y compris pendant les coups IA — seul gameState null le désactive.
+        this.btnStop.disabled = !this.gameState;
+    }
+
+    /**
+     * Arrête la partie en cours, réinitialise le plateau et les scores.
+     * Affiche un toast d'avertissement, puis remet tout à zéro côté client.
+     * Aucun appel API — la prochaine partie enverra un nouveau /start.
+     */
+    resetGame() {
+        // Annule le verrou pour ne pas rester bloqué
+        this._busy = false;
+        this.pits.forEach(pit => { pit.style.pointerEvents = ''; });
+
+        // Vide l'état de jeu
+        this.gameState = null;
+
+        // Remet le plateau à 4 graines par case
+        this.renderInitialBoard();
+        this.updateScores(0, 0);
+
+        // Remet la barre d'analyse à zéro
+        if (this.atbFill)     { this.atbFill.style.width = '0%'; }
+        if (this.telemetryTime) { this.telemetryTime.textContent = '--'; }
+        if (this.analysisEmpty) { this.analysisEmpty.style.display = ''; }
+
+        // Remet les stats / historique
+        this._lastTelemetry = null;
+        this._turnCount     = 0;
+        this._perfStats     = { bestTime: null, worstTime: null, bestPit: null, totalMoves: 0, totalTime: 0 };
+        this._granaryCache  = [];
+        this.clearHistory();
+        this._clearHighlights();
+
+        // Retire la bordure "joueur actif"
+        document.querySelector('.score-box.player1')?.classList.remove('active-player');
+        document.querySelector('.score-box.player2')?.classList.remove('active-player');
+
+        // Ferme la modale si ouverte
+        this._closeModal();
+
+        // Désactive Stop
+        this.btnStop.disabled = true;
+
+        this.setStatus('Partie arrêtée — plateau réinitialisé', 'idle');
+        this.showToast(
+            '<i class="fa-solid fa-stop" style="margin-right:6px"></i>'
+            + 'Partie arrêtée. Le plateau et les scores ont été réinitialisés.',
+            'warning',
+            4000
+        );
     }
 
     // ─── Appels API ───────────────────────────────────────────────────────────
@@ -818,6 +859,7 @@ class AwaleGame {
             this.gameState = data;
             this._lastTelemetry = null;         // reset analyse
             this.renderGameState();
+            this.btnStop.disabled = false;      // active Stop dès que la partie est lancée
             const currentP = this.players[this.gameState.current_player];
             this.setStatus(`Tour de ${currentP.name}`, currentP.type === 'ai' ? 'ai' : 'playing');
             this.showToast('Partie démarrée — bonne chance !', 'success', 2500);
@@ -891,8 +933,11 @@ class AwaleGame {
 
             this.gameState = data;
 
-            const captured = (this.gameState.scores[currentPlayerKey] || 0)
+            // En cas de fin de partie par blocus, le serveur ajoute les graines
+            // résiduelles au score — ne pas les comptabiliser comme capture du coup.
+            const rawDelta = (this.gameState.scores[currentPlayerKey] || 0)
                            - (scoresBefore[currentPlayerKey] || 0);
+            const captured = this.gameState.game_over ? 0 : rawDelta;
 
             this.renderGameState();
             this.addToHistory(currentPlayer.name, pitIndex, captured, currentPlayerKey);
@@ -974,8 +1019,11 @@ class AwaleGame {
             this.gameState = data.game_state;
             this.updateTelemetry(data.telemetry);
 
-            const captured = (this.gameState.scores[currentPlayerKey] || 0)
+            // En cas de fin de partie par blocus, le serveur ajoute les graines
+            // résiduelles au score — ne pas les comptabiliser comme capture du coup.
+            const rawDelta = (this.gameState.scores[currentPlayerKey] || 0)
                            - (scoresBefore[currentPlayerKey] || 0);
+            const captured = this.gameState.game_over ? 0 : rawDelta;
 
             this.renderGameState();
             this.addToHistory(currentPlayer.name, pitIndex, captured, currentPlayerKey);

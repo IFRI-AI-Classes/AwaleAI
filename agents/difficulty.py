@@ -84,10 +84,11 @@ def choose_move(game, level: str) -> int:
         )
 
     config = LEVELS[level]
-    return choose_move_by_agent(game, config["agent"], config["depth"])
+    hole, _ = choose_move_by_agent(game, config["agent"], config["depth"])
+    return hole
 
 
-def choose_move_by_agent(game, agent: str, depth: Optional[int] = None) -> int:
+def choose_move_by_agent(game, agent: str, depth: Optional[int] = None):
     """Return the move selected by a specific agent at a given depth.
 
     This is the primary entry point when the caller specifies the agent and
@@ -101,7 +102,8 @@ def choose_move_by_agent(game, agent: str, depth: Optional[int] = None) -> int:
                qlearning.
 
     Returns:
-        int: Selected hole index.
+        tuple[int, Optional[int]]: Selected hole index and nodes explored
+            (None for agents that do not count nodes).
 
     Raises:
         ValueError: If the agent name is unknown.
@@ -113,23 +115,25 @@ def choose_move_by_agent(game, agent: str, depth: Optional[int] = None) -> int:
         )
 
     if agent == "random":
-        return random_move(game)
+        return random_move(game), None
 
     elif agent == "minimax":
         effective_depth = depth if depth is not None else 2
         minimax_agent = Minimax(depth=effective_depth)
-        return minimax_agent.choose_move(
+        move, nodes = minimax_agent.choose_move(
             game.board,
             player=game.current_player,
             score1=game.score_p1,
             score2=game.score_p2,
         )
+        return move, nodes
 
     elif agent == "alphabeta":
         effective_depth = depth if depth is not None else 5
-        return alpha_beta_move(game, depth=effective_depth)
+        move, nodes = alpha_beta_move(game, depth=effective_depth)
+        return move, nodes
 
     elif agent == "qlearning":
-        return _get_qlearning_agent().choose_move(game, greedy=True)
+        return _get_qlearning_agent().choose_move(game, greedy=True), None
 
     raise ValueError(f"Agent non géré : '{agent}'")

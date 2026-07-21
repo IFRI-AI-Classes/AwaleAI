@@ -20,7 +20,16 @@ class Game:
         self.current_player = 1
 
     def capture(self, last_hole):
-        """Capture seeds from the last sowed hole.
+        """Capture seeds from the last sowed hole (and backwards chain).
+
+        Starting from ``last_hole``, walks backwards (index - 1) through
+        consecutive opponent holes that contain exactly 2 or 3 seeds and
+        captures them all.
+
+        The rule of non-starvation (a move must not leave the opponent with
+        zero seeds) is enforced *before* the move is executed by
+        ``Rules.get_valid_moves()``.  The chain-capture here therefore
+        operates only on positions that were already validated as legal.
 
         Args:
             last_hole: Index of the last hole that received a seed.
@@ -28,6 +37,7 @@ class Game:
         Returns:
             int: Number of captured seeds.
         """
+
         captured = 0
 
         if self.current_player == 1:
@@ -46,7 +56,6 @@ class Game:
             last_hole -= 1
 
         return captured
-
     def play_move(self, hole):
         """Execute one complete move.
 
@@ -100,11 +109,18 @@ class Game:
         return children
 
     def is_game_over(self) -> bool:
-        """Return whether the game has ended."""
-        if self.score_p1 > 24 or self.score_p2 > 24:
-            return True
+        """Return whether the game has ended.
 
-        if self.score_p1 == 24 and self.score_p2 == 24:
+        The game ends when:
+        - A player has captured a strict majority of seeds (>= 25 out of 48), OR
+        - The current player has no valid move (blockade); the remaining seeds
+          are then awarded to the opponent inside get_winner().
+
+        The 24/24 tie is NOT a terminal condition here: the game can still
+        continue as long as the current player has valid moves.  The tie is
+        resolved by get_winner() once the game is truly over.
+        """
+        if self.score_p1 >= 25 or self.score_p2 >= 25:
             return True
 
         if not Rules.get_valid_moves(self.board, self.current_player):

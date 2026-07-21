@@ -30,7 +30,18 @@ class Rules:
 
     @staticmethod
     def sow(board, hole):
-        """Sow seeds from a selected hole.
+        """Sow seeds from a selected hole in anti-clockwise order.
+
+        Internal index convention
+        -------------------------
+        Player 1 owns holes[0..5]  — displayed left → right  (bottom row).
+        Player 2 owns holes[6..11] — displayed right → left  (top row).
+
+        Anti-clockwise traversal = incrementing index modulo 12:
+          0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 0 → …
+
+        When seeds > 11 the starting hole is skipped on the first pass
+        (Kroo rule): ``if current == hole: continue``.
 
         Args:
             board: Board instance containing the current holes.

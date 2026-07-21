@@ -1,8 +1,10 @@
 import math
-from typing import Optional
+from typing import Optional, Tuple
 from engine.rules import Rules
 from engine.game import Game
 from agents.heuristic.heuristic import heuristic
+
+_nodes_counter: int = 0
 
 WIN_SCORE = 999999
 
@@ -64,15 +66,32 @@ def evaluate(state, player: int) -> float:
 
 
 def alpha_beta(state, depth, alpha, beta, current_player) -> float:
-    """Run alpha-beta search for the current Awalé state."""
+    """Run negamax alpha-beta search for the current Awalé state.
+
+    Args:
+        state: Current Game instance (after the previous move was applied).
+        depth: Remaining search depth.
+        alpha: Lower bound of the search window.
+        beta: Upper bound of the search window.
+        current_player: The player whose turn it is at this node.  Used as
+            the evaluation perspective so that the negamax sign-flip is
+            consistent at every depth level.
+
+    Returns:
+        float: Score from current_player's perspective (higher = better).
+    """
+    global _nodes_counter
+    _nodes_counter += 1
+
     if depth == 0 or state.is_game_over():
         return evaluate(state, current_player)
 
     best = -math.inf
-    next_player = 2 if current_player == 1 else 1
 
     children = state.get_children()
     for child in children:
+        # After play_move() the child already has the opponent as current_player.
+        next_player = child.current_player
         eval_ = -alpha_beta(child, depth - 1, -beta, -alpha, next_player)
         best = max(best, eval_)
         alpha = max(alpha, best)
@@ -81,8 +100,15 @@ def alpha_beta(state, depth, alpha, beta, current_player) -> float:
     return best
 
 
-def best_move(state, depth=100) -> Optional[int]:
-    """Return the best move for the current state using alpha-beta search."""
+def best_move(state, depth=100) -> Tuple[Optional[int], int]:
+    """Return the best move and node count using alpha-beta search.
+
+    Returns:
+        tuple[Optional[int], int]: Best hole index and number of nodes explored.
+    """
+    global _nodes_counter
+    _nodes_counter = 0
+
     current_player = state.current_player
     next_player = 2 if current_player == 1 else 1
     best_score, best_mv = -math.inf, None
@@ -103,4 +129,4 @@ def best_move(state, depth=100) -> Optional[int]:
         if best_score >= WIN_SCORE:
             break
 
-    return best_mv
+    return best_mv, _nodes_counter

@@ -97,10 +97,12 @@
       <main class="main-content">
         <section class="game-section">
           <div class="scores-container">
+            <!-- J1 côté gauche — même ordre que le panel de configuration -->
             <div class="score-box player1">
               <span class="score-label" id="label-player1">Joueur 1</span>
               <span class="score-value" id="score-player1">0</span>
             </div>
+            <!-- J2 côté droit -->
             <div class="score-box player2">
               <span class="score-label" id="label-player2">Joueur 2</span>
               <span class="score-value" id="score-player2">0</span>
@@ -109,6 +111,7 @@
 
           <div class="board-container">
             <div class="board">
+              <!-- Grenier J2 à gauche (J2 joue la rangée du haut, indices 6-11) -->
               <div class="granary granary-left" id="granary-player2">
                 <div class="granary-inner">
                   <div class="granary-seeds" id="granary-seeds-player2"></div>
@@ -132,6 +135,7 @@
                   <div class="pit" data-index="5"><div class="seeds"></div></div>
                 </div>
               </div>
+              <!-- Grenier J1 à droite (J1 joue la rangée du bas, indices 0-5) -->
               <div class="granary granary-right" id="granary-player1">
                 <div class="granary-inner">
                   <div class="granary-seeds" id="granary-seeds-player1"></div>
@@ -250,8 +254,8 @@
               <button class="btn btn-primary" id="btn-new-game">
                 <i class="fa-solid fa-play"></i> Nouvelle partie
               </button>
-              <button class="btn btn-secondary" id="btn-ai-play">
-                <i class="fa-solid fa-microchip"></i> IA joue
+              <button class="btn btn-stop" id="btn-stop" disabled title="Arrêter et réinitialiser la partie">
+                <i class="fa-solid fa-stop"></i> Arrêter la partie
               </button>
             </div>
           </div>

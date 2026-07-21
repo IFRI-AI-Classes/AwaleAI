@@ -537,6 +537,30 @@ select:focus {
   transform: translateY(0);
 }
 
+/* Bouton Stop — rouge discret */
+.btn-stop {
+  background: linear-gradient(145deg, #fff5f5 0%, #fee2e2 100%);
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.1);
+}
+
+.btn-stop:hover:not(:disabled) {
+  background: linear-gradient(145deg, #fee2e2 0%, #fecaca 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.2);
+}
+
+.btn-stop:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-stop:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Sidebar */
 .sidebar {
   display: flex;

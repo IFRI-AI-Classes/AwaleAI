@@ -55,7 +55,9 @@ def _game_to_state(game: Game) -> dict:
     game_over = game.is_game_over()
 
     # Compute final scores without mutating game state.
-    # get_winner() already uses local copies (s1, s2) — replicate that logic.
+    # Centralise the residual-seeds logic in one place: when the game ends by
+    # blockade (current player has no move) the remaining seeds on the board
+    # belong to the opponent.  This mirrors exactly what get_winner() does.
     s1, s2 = game.score_p1, game.score_p2
     if game_over and not Rules.get_valid_moves(game.board, game.current_player):
         remaining = sum(game.board.holes)
@@ -63,6 +65,8 @@ def _game_to_state(game: Game) -> dict:
             s2 += remaining
         else:
             s1 += remaining
+    # When game ends by score (>= 25) there are no residual seeds to award;
+    # s1/s2 are already the correct final values.
 
     return {
         "board": list(game.board.holes),
@@ -285,7 +289,7 @@ def ai_move(req: AIMoveRequest):
     depth_used = req.depth
 
     start_time = time.time()
-    hole = difficulty.choose_move_by_agent(_game, agent, depth_used)
+    hole, nodes_explored = difficulty.choose_move_by_agent(_game, agent, depth_used)
     elapsed_ms = round((time.time() - start_time) * 1000, 1)
 
     if hole is None:
@@ -299,7 +303,7 @@ def ai_move(req: AIMoveRequest):
     telemetry = {
         "computation_time": elapsed_ms,
         "depth": depth_used,
-        "nodes_explored": None,
+        "nodes_explored": nodes_explored,
         "win_rate": None,
         "agent": agent,
         "pit_played": pit_played,

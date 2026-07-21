@@ -1,3 +1,4 @@
+import random
 from agents.heuristic.heuristic import heuristic
 
 
@@ -32,11 +33,18 @@ class Minimax:
             score2: Current score of player 2 (default 0).
 
         Returns:
-            int: Selected hole index.
+            tuple[int, int]: Selected hole index and number of nodes explored.
         """
+        self._nodes = 0
         state = SearchState(holes=board.holes[:], score1=score1, score2=score2, player=player)
         _, move = self.minimax(state, self.depth, player)
-        return move
+        return move, self._nodes
+
+    def _shuffled_moves(self, moves):
+        """Return a shuffled copy of moves for tie-breaking."""
+        m = list(moves)
+        random.shuffle(m)
+        return m
 
     def minimax(self, state, depth, root_player):
         """Run the minimax search from a given state.
@@ -49,10 +57,12 @@ class Minimax:
         Returns:
             tuple: Best score and associated move.
         """
+        self._nodes += 1
+
         if depth == 0 or self.is_terminal(state):
             return self.evaluate(state, root_player), None
 
-        moves = self.legal_moves(state)
+        moves = self._shuffled_moves(self.legal_moves(state))
         maximizing = state.player == root_player
         best_move = moves[0]
 
@@ -95,7 +105,12 @@ class Minimax:
         return Rules.get_valid_moves(FakeBoard(state.holes), state.player)
 
     def apply_move(self, state, hole):
-        """Simulate a complete move and return the next search state."""
+        """Simulate a complete move and return the next search state.
+
+        Sowing uses the same anti-clockwise index convention as Rules.sow():
+        index increments modulo 12 (0→1→…→11→0).  The starting hole is
+        skipped when seeds > 11 (Kroo rule).
+        """
         holes = state.holes[:]
         seeds = holes[hole]
         holes[hole] = 0
