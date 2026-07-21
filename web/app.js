@@ -27,7 +27,9 @@ const AGENT_DEFAULT_DEPTH = {
 
 class AwaleGame {
     constructor() {
-        this.apiBaseUrl = 'http://localhost:8000';
+        this.apiBaseUrl = window.location.hostname === 'localhost'
+            ? 'http://localhost:8000'
+            : 'https://awale-ai-backend.onrender.com';
         this.gameState = null;
         this._busy = false;           // verrou global — empêche les actions simultanées
         this._granaryCache = [];      // cache des positions fixes de graines dans granaires
