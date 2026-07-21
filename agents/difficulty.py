@@ -9,6 +9,7 @@ from awale.ai.qlearning import QLearningAgent
 
 _qlearning_agent: Optional[QLearningAgent] = None
 
+# Niveaux prédéfinis (conservés pour rétrocompatibilité CLI / main.py)
 LEVELS = {
     "facile": {
         "agent": "random",
@@ -32,6 +33,26 @@ LEVELS = {
     },
 }
 
+# Agents disponibles et leurs profondeurs min/max valides
+AGENTS = {
+    "random": {
+        "label": "Aléatoire",
+        "depths": None,          # pas de profondeur applicable
+    },
+    "minimax": {
+        "label": "Minimax",
+        "depths": list(range(1, 9)),
+    },
+    "alphabeta": {
+        "label": "Alpha-Beta",
+        "depths": list(range(1, 13)),
+    },
+    "qlearning": {
+        "label": "Q-Learning",
+        "depths": None,
+    },
+}
+
 
 def _get_qlearning_agent() -> QLearningAgent:
     """Return a lazily initialized Q-learning agent instance."""
@@ -48,7 +69,7 @@ def choose_move(game, level: str) -> int:
 
     Args:
         game: Current game state.
-        level: Difficulty level name.
+        level: Difficulty level name (from LEVELS).
 
     Returns:
         int: Selected hole index.
@@ -63,20 +84,52 @@ def choose_move(game, level: str) -> int:
         )
 
     config = LEVELS[level]
-    agent_name = config["agent"]
-    depth = config["depth"]
+    return choose_move_by_agent(game, config["agent"], config["depth"])
 
-    if agent_name == "random":
+
+def choose_move_by_agent(game, agent: str, depth: Optional[int] = None) -> int:
+    """Return the move selected by a specific agent at a given depth.
+
+    This is the primary entry point when the caller specifies the agent and
+    depth directly (e.g. from the web UI).
+
+    Args:
+        game: Current game state.
+        agent: Agent identifier — one of "random", "minimax", "alphabeta",
+               "qlearning".
+        depth: Search depth for tree-based agents. Ignored for random and
+               qlearning.
+
+    Returns:
+        int: Selected hole index.
+
+    Raises:
+        ValueError: If the agent name is unknown.
+    """
+    if agent not in AGENTS:
+        raise ValueError(
+            f"Agent inconnu : '{agent}'. "
+            f"Agents disponibles : {list(AGENTS.keys())}"
+        )
+
+    if agent == "random":
         return random_move(game)
 
-    elif agent_name == "minimax":
-        minimax_agent = Minimax(depth=depth)
-        return minimax_agent.choose_move(game.board, player=game.current_player)
+    elif agent == "minimax":
+        effective_depth = depth if depth is not None else 2
+        minimax_agent = Minimax(depth=effective_depth)
+        return minimax_agent.choose_move(
+            game.board,
+            player=game.current_player,
+            score1=game.score_p1,
+            score2=game.score_p2,
+        )
 
-    elif agent_name == "alphabeta":
-        return alpha_beta_move(game, depth=depth)
+    elif agent == "alphabeta":
+        effective_depth = depth if depth is not None else 5
+        return alpha_beta_move(game, depth=effective_depth)
 
-    elif agent_name == "qlearning":
+    elif agent == "qlearning":
         return _get_qlearning_agent().choose_move(game, greedy=True)
 
-    raise ValueError(f"Agent inconnu configuré pour le niveau '{level}': {agent_name}")
+    raise ValueError(f"Agent non géré : '{agent}'")

@@ -22,17 +22,19 @@ class Minimax:
         """
         self.depth = depth
 
-    def choose_move(self, board, player):
+    def choose_move(self, board, player, score1=0, score2=0):
         """Choose the best move for the current position.
 
         Args:
             board: Current board state.
             player: Current player number.
+            score1: Current score of player 1 (default 0).
+            score2: Current score of player 2 (default 0).
 
         Returns:
             int: Selected hole index.
         """
-        state = SearchState(holes=board.holes[:], score1=0, score2=0, player=player)
+        state = SearchState(holes=board.holes[:], score1=score1, score2=score2, player=player)
         _, move = self.minimax(state, self.depth, player)
         return move
 

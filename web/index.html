@@ -5,24 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Awalé AI - IFRI</title>
     <link rel="stylesheet" href="styles.css" />
+    <!-- Font Awesome 6 Free (CDN) -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
   </head>
   <body>
+
+    <!-- ══════════════════════════════════════════════
+         MODALE DE FIN DE PARTIE
+    ══════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-end" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+        <!-- Confettis SVG (animés en CSS) -->
+        <div class="confetti" aria-hidden="true">
+          <span class="c c1"></span><span class="c c2"></span><span class="c c3"></span>
+          <span class="c c4"></span><span class="c c5"></span><span class="c c6"></span>
+          <span class="c c7"></span><span class="c c8"></span><span class="c c9"></span>
+          <span class="c c10"></span><span class="c c11"></span><span class="c c12"></span>
+        </div>
+
+        <div class="modal-icon" id="modal-icon">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+
+        <h2 class="modal-title" id="modal-title">Victoire !</h2>
+
+        <!-- Bandeau vainqueur -->
+        <div class="modal-winner-row">
+          <span class="modal-winner-label" id="modal-winner-label">Vainqueur</span>
+          <span class="modal-winner-name" id="modal-winner">—</span>
+        </div>
+
+        <!-- Scores côte à côte -->
+        <div class="modal-scores">
+          <div class="modal-score-box" id="modal-score-p1">
+            <span class="modal-score-badge badge-p1">J1</span>
+            <span class="modal-score-name" id="modal-sname-p1">Joueur 1</span>
+            <span class="modal-score-num" id="modal-snum-p1">0</span>
+            <span class="modal-score-label">graines</span>
+          </div>
+          <div class="modal-score-sep">—</div>
+          <div class="modal-score-box" id="modal-score-p2">
+            <span class="modal-score-badge badge-p2">J2</span>
+            <span class="modal-score-name" id="modal-sname-p2">Joueur 2</span>
+            <span class="modal-score-num" id="modal-snum-p2">0</span>
+            <span class="modal-score-label">graines</span>
+          </div>
+        </div>
+
+        <!-- Performances IA (masquées si aucune IA) -->
+        <div class="modal-perf" id="modal-perf">
+          <div class="modal-perf-title">
+            <i class="fa-solid fa-microchip"></i> Performance IA
+          </div>
+          <div class="modal-perf-grid" id="modal-perf-grid">
+            <!-- rempli dynamiquement -->
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="modal-btn-replay">
+            <i class="fa-solid fa-rotate-right"></i> Rejouer
+          </button>
+          <button class="btn btn-secondary" id="modal-btn-close">
+            <i class="fa-solid fa-xmark"></i> Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         ZONE TOAST (notifications API)
+    ══════════════════════════════════════════════ -->
+    <div class="toast-zone" id="toast-zone" aria-live="polite"></div>
+
+    <!-- ══════════════════════════════════════════════
+         APP
+    ══════════════════════════════════════════════ -->
     <div class="app-container">
       <header class="header">
         <h1 class="title">Awalé AI</h1>
-        <p class="subtitle">Club IA & IoT - IFRI</p>
+        <p class="subtitle">Club IA &amp; IoT — IFRI</p>
       </header>
 
       <main class="main-content">
         <section class="game-section">
           <div class="scores-container">
-            <div class="score-box player2">
-              <span class="score-label" id="label-player2">Joueur 2</span>
-              <span class="score-value" id="score-player2">0</span>
-            </div>
             <div class="score-box player1">
               <span class="score-label" id="label-player1">Joueur 1</span>
               <span class="score-value" id="score-player1">0</span>
+            </div>
+            <div class="score-box player2">
+              <span class="score-label" id="label-player2">Joueur 2</span>
+              <span class="score-value" id="score-player2">0</span>
             </div>
           </div>
 
@@ -35,44 +116,20 @@
               </div>
               <div class="pits-container">
                 <div class="pits-row top-row">
-                  <div class="pit" data-index="11">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="10">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="9">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="8">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="7">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="6">
-                    <div class="seeds"></div>
-                  </div>
+                  <div class="pit" data-index="11"><div class="seeds"></div></div>
+                  <div class="pit" data-index="10"><div class="seeds"></div></div>
+                  <div class="pit" data-index="9"><div class="seeds"></div></div>
+                  <div class="pit" data-index="8"><div class="seeds"></div></div>
+                  <div class="pit" data-index="7"><div class="seeds"></div></div>
+                  <div class="pit" data-index="6"><div class="seeds"></div></div>
                 </div>
                 <div class="pits-row bottom-row">
-                  <div class="pit" data-index="0">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="1">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="2">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="3">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="4">
-                    <div class="seeds"></div>
-                  </div>
-                  <div class="pit" data-index="5">
-                    <div class="seeds"></div>
-                  </div>
+                  <div class="pit" data-index="0"><div class="seeds"></div></div>
+                  <div class="pit" data-index="1"><div class="seeds"></div></div>
+                  <div class="pit" data-index="2"><div class="seeds"></div></div>
+                  <div class="pit" data-index="3"><div class="seeds"></div></div>
+                  <div class="pit" data-index="4"><div class="seeds"></div></div>
+                  <div class="pit" data-index="5"><div class="seeds"></div></div>
                 </div>
               </div>
               <div class="granary granary-right" id="granary-player1">
@@ -85,17 +142,27 @@
 
           <div class="controls-container">
             <div class="player-setup">
+
+              <!-- ── Joueur 1 ───────────────────────────────────── -->
               <div class="player-config player1-config">
-                <h4 class="player-config-title">Joueur 1</h4>
+                <h4 class="player-config-title">
+                  <i class="fa-solid fa-user"></i> Joueur 1
+                </h4>
+
                 <div class="config-row">
-                  <label for="player1-type">Type</label>
+                  <label for="player1-type">
+                    <i class="fa-solid fa-toggle-on"></i> Type
+                  </label>
                   <select id="player1-type" class="player-type-select">
                     <option value="human">Humain</option>
                     <option value="ai">IA</option>
                   </select>
                 </div>
+
                 <div class="config-row">
-                  <label for="player1-name">Nom</label>
+                  <label for="player1-name">
+                    <i class="fa-solid fa-pen"></i> Nom
+                  </label>
                   <input
                     type="text"
                     id="player1-name"
@@ -103,31 +170,51 @@
                     placeholder="Joueur 1"
                   />
                 </div>
-                <div class="config-row ai-config-row" id="player1-ai-config">
-                  <label for="player1-algorithm">Niveau</label>
-                  <select id="player1-algorithm" class="ai-algorithm-select">
-                    <option value="facile">Facile 😏</option>
-                    <option value="moyen">Moyen 😎</option>
-                    <option value="difficile" selected>Difficile 😬</option>
-                    <option value="expert">Expert 🔥</option>
-                    <option value="qlearning">Q-Learning 🧠</option>
-                  </select>
+
+                <div class="ai-config-block" id="player1-ai-config">
+                  <div class="config-row">
+                    <label for="player1-agent">
+                      <i class="fa-solid fa-robot"></i> Modèle
+                    </label>
+                    <select id="player1-agent" class="ai-agent-select">
+                      <option value="random">Aléatoire</option>
+                      <option value="minimax">Minimax</option>
+                      <option value="alphabeta" selected>Alpha-Beta</option>
+                      <option value="qlearning">Q-Learning</option>
+                    </select>
+                  </div>
+
+                  <div class="config-row" id="player1-depth-row">
+                    <label for="player1-depth">
+                      <i class="fa-solid fa-layer-group"></i> Profondeur
+                    </label>
+                    <select id="player1-depth" class="ai-depth-select"></select>
+                  </div>
                 </div>
               </div>
 
               <div class="vs-divider">VS</div>
 
+              <!-- ── Joueur 2 ───────────────────────────────────── -->
               <div class="player-config player2-config">
-                <h4 class="player-config-title">Joueur 2</h4>
+                <h4 class="player-config-title">
+                  <i class="fa-solid fa-user"></i> Joueur 2
+                </h4>
+
                 <div class="config-row">
-                  <label for="player2-type">Type</label>
+                  <label for="player2-type">
+                    <i class="fa-solid fa-toggle-on"></i> Type
+                  </label>
                   <select id="player2-type" class="player-type-select">
                     <option value="human" selected>Humain</option>
                     <option value="ai">IA</option>
                   </select>
                 </div>
+
                 <div class="config-row">
-                  <label for="player2-name">Nom</label>
+                  <label for="player2-name">
+                    <i class="fa-solid fa-pen"></i> Nom
+                  </label>
                   <input
                     type="text"
                     id="player2-name"
@@ -135,64 +222,110 @@
                     placeholder="Joueur 2"
                   />
                 </div>
-                <div class="config-row ai-config-row" id="player2-ai-config">
-                  <label for="player2-algorithm">Niveau</label>
-                  <select id="player2-algorithm" class="ai-algorithm-select">
-                    <option value="facile">Facile 😏</option>
-                    <option value="moyen">Moyen 😎</option>
-                    <option value="difficile" selected>Difficile 😬</option>
-                    <option value="expert">Expert 🔥</option>
-                    <option value="qlearning">Q-Learning 🧠</option>
-                  </select>
+
+                <div class="ai-config-block" id="player2-ai-config">
+                  <div class="config-row">
+                    <label for="player2-agent">
+                      <i class="fa-solid fa-robot"></i> Modèle
+                    </label>
+                    <select id="player2-agent" class="ai-agent-select">
+                      <option value="random">Aléatoire</option>
+                      <option value="minimax">Minimax</option>
+                      <option value="alphabeta" selected>Alpha-Beta</option>
+                      <option value="qlearning">Q-Learning</option>
+                    </select>
+                  </div>
+
+                  <div class="config-row" id="player2-depth-row">
+                    <label for="player2-depth">
+                      <i class="fa-solid fa-layer-group"></i> Profondeur
+                    </label>
+                    <select id="player2-depth" class="ai-depth-select"></select>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div class="buttons-container">
               <button class="btn btn-primary" id="btn-new-game">
-                Nouvelle partie
+                <i class="fa-solid fa-play"></i> Nouvelle partie
               </button>
               <button class="btn btn-secondary" id="btn-ai-play">
-                IA joue
+                <i class="fa-solid fa-microchip"></i> IA joue
               </button>
             </div>
           </div>
         </section>
 
         <aside class="sidebar">
-          <div class="telemetry-panel">
-            <h3 class="panel-title">Télémétrie</h3>
-            <div class="telemetry-item">
-              <span class="telemetry-label">Temps de calcul</span>
-              <span class="telemetry-value" id="telemetry-time">--</span>
+
+          <!-- ── Analyse du coup IA (ex-Télémétrie) ── -->
+          <div class="analysis-panel">
+            <h3 class="panel-title">
+              <i class="fa-solid fa-magnifying-glass-chart"></i>
+              Analyse du coup IA
+            </h3>
+
+            <!-- Barre de progression du temps de calcul -->
+            <div class="analysis-time-bar" id="analysis-time-bar">
+              <div class="atb-label">
+                <i class="fa-regular fa-clock"></i> Temps de réflexion
+              </div>
+              <div class="atb-track">
+                <div class="atb-fill" id="atb-fill"></div>
+              </div>
+              <div class="atb-value" id="telemetry-time">--</div>
             </div>
+
             <div class="telemetry-item">
-              <span class="telemetry-label">Profondeur</span>
+              <span class="telemetry-label">
+                <i class="fa-solid fa-sitemap"></i> Niveau d'analyse
+              </span>
               <span class="telemetry-value" id="telemetry-depth">--</span>
             </div>
             <div class="telemetry-item">
-              <span class="telemetry-label">Nœuds explorés</span>
+              <span class="telemetry-label">
+                <i class="fa-solid fa-circle-nodes"></i> Coups évalués
+              </span>
               <span class="telemetry-value" id="telemetry-nodes">--</span>
             </div>
             <div class="telemetry-item">
-              <span class="telemetry-label">Taux de victoire</span>
+              <span class="telemetry-label">
+                <i class="fa-solid fa-trophy"></i> Taux de victoire
+              </span>
               <span class="telemetry-value" id="telemetry-winrate">--</span>
             </div>
+
+            <!-- Message quand aucune IA n'a encore joué -->
+            <p class="analysis-empty" id="analysis-empty">
+              <i class="fa-solid fa-circle-info"></i>
+              Les statistiques apparaîtront dès que l'IA jouera son premier coup.
+            </p>
           </div>
 
+          <!-- ── Historique ── -->
           <div class="history-panel">
-            <h3 class="panel-title">Historique des coups</h3>
+            <h3 class="panel-title">
+              <i class="fa-solid fa-clock-rotate-left"></i> Historique
+            </h3>
             <div class="history-list" id="move-history">
               <p class="empty-history">Aucun coup joué</p>
             </div>
           </div>
 
+          <!-- ── Statut ── -->
           <div class="status-panel">
-            <h3 class="panel-title">Statut</h3>
-            <p class="status-message" id="game-status">
-              En attente de nouvelle partie
-            </p>
+            <h3 class="panel-title">
+              <i class="fa-solid fa-circle-info"></i> Statut
+            </h3>
+            <div class="status-inner" id="status-inner">
+              <span class="status-dot" id="status-dot"></span>
+              <p class="status-message" id="game-status">
+                En attente de nouvelle partie
+              </p>
+            </div>
           </div>
+
         </aside>
       </main>
     </div>

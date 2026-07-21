@@ -115,20 +115,24 @@ class Game:
     def get_winner(self) -> int | None:
         """Return the winner once the game is over.
 
+        This method is idempotent: it does not mutate board or scores when
+        called multiple times (e.g. from serialisation helpers).
+
         Returns:
             int | None: Winning player number, or None for a draw.
         """
+        s1, s2 = self.score_p1, self.score_p2
+
         if not Rules.get_valid_moves(self.board, self.current_player):
             remaining = sum(self.board.holes)
             if self.current_player == 1:
-                self.score_p2 += remaining
+                s2 += remaining
             else:
-                self.score_p1 += remaining
-            self.board.holes = [0] * 12
+                s1 += remaining
 
-        if self.score_p1 > self.score_p2:
+        if s1 > s2:
             return 1
-        elif self.score_p2 > self.score_p1:
+        elif s2 > s1:
             return 2
         else:
             return None

@@ -4,6 +4,7 @@ from engine.rules import Rules
 class heuristic:
     """Heuristic evaluation helpers for Awalé positions."""
 
+    @staticmethod
     def evaluate(game, player, w_diff=1.0, w_mobility=3.0, w_seeds=0.1):
         """Evaluate the position from a player's perspective.
 
@@ -32,6 +33,7 @@ class heuristic:
 
         return (w_diff * diff) + (w_mobility * mobility_score) + (w_seeds * opp_seeds)
 
+    @staticmethod
     def count_valid_moves(board, player):
         """Count the legal moves for a player."""
         count = 0
@@ -40,6 +42,7 @@ class heuristic:
                 count += 1
         return count
 
+    @staticmethod
     def seeds_in_opponent_camp(board, player):
         """Count seeds currently placed in the opponent camp."""
         if player == 1:

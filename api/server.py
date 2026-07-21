@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from engine.game import Game
 from engine.rules import Rules
 from agents import difficulty  # ← module centralisé niveau → agent/profondeur
+from agents.difficulty import AGENTS
 
 app = FastAPI(title="AwaleAI API", version="1.0.0")
 
@@ -41,24 +42,40 @@ _player_configs: dict = {}
 def _game_to_state(game: Game) -> dict:
     """Convert a game instance into the API response payload.
 
+    When the game is over and ended by blocking (no valid moves), the remaining
+    seeds on the board belong to the opponent of the blocked player. We compute
+    the final scores here so the frontend always receives the correct totals.
+
     Args:
         game: Active Awalé game instance.
 
     Returns:
         dict: Serialized game state.
     """
+    game_over = game.is_game_over()
+
+    # Compute final scores without mutating game state.
+    # get_winner() already uses local copies (s1, s2) — replicate that logic.
+    s1, s2 = game.score_p1, game.score_p2
+    if game_over and not Rules.get_valid_moves(game.board, game.current_player):
+        remaining = sum(game.board.holes)
+        if game.current_player == 1:
+            s2 += remaining
+        else:
+            s1 += remaining
+
     return {
         "board": list(game.board.holes),
         "scores": {
-            "player1": game.score_p1,
-            "player2": game.score_p2,
+            "player1": s1,
+            "player2": s2,
         },
         "granaries": {
-            "player1": game.score_p1,
-            "player2": game.score_p2,
+            "player1": s1,
+            "player2": s2,
         },
         "current_player": "player1" if game.current_player == 1 else "player2",
-        "game_over": game.is_game_over(),
+        "game_over": game_over,
         "winner": _get_winner_key(game),
         "valid_moves": Rules.get_valid_moves(game.board, game.current_player),
     }
@@ -104,12 +121,10 @@ class PlayerConfig(BaseModel):
     Attributes:
         name: Human-readable player name.
         type: Player type, either human or AI.
-        level: AI difficulty level when applicable.
     """
 
     name: str = "Joueur"
     type: str = "human"
-    level: Optional[str] = None
 
 
 class StartRequest(BaseModel):
@@ -141,12 +156,14 @@ class AIMoveRequest(BaseModel):
 
     Attributes:
         player: Player key expected to act.
-        level: Difficulty level requested by the client.
+        agent: Agent identifier (random, minimax, alphabeta, qlearning).
+        depth: Search depth. None for agents that do not use it.
         board: Client-side board snapshot kept for compatibility.
     """
 
     player: str
-    level: str
+    agent: str
+    depth: Optional[int] = None
     board: list[int]
 
 
@@ -219,23 +236,32 @@ def human_move(req: MoveRequest):
     return _game_to_state(_game)
 
 
+@app.get("/api/agents")
+def get_agents():
+    """Return the list of available AI agents and their depth ranges.
+
+    Returns:
+        dict: Agent metadata keyed by agent identifier.
+    """
+    return {"agents": AGENTS}
+
+
 @app.post("/api/game/ai-move")
 def ai_move(req: AIMoveRequest):
-    """
-    Play an AI move for the current game.
+    """Play an AI move for the current game.
 
-    Uses the difficulty routing defined in agents.difficulty to select the
-    appropriate agent and search depth for the requested level.
+    The caller specifies the agent and depth directly. The server selects the
+    move using agents.difficulty.choose_move_by_agent.
 
     Args:
-        req: Acting player, requested level, and compatibility board payload.
+        req: Acting player, agent identifier, depth, and compatibility board.
 
     Returns:
         dict: Updated game state and telemetry payload.
 
     Raises:
-        HTTPException: If no game is active, the game is over, the requested
-            level is unknown, or the AI cannot find a legal move.
+        HTTPException: If no game is active, the game is over, the agent is
+            unknown, or the AI cannot find a legal move.
     """
     global _game
 
@@ -248,19 +274,18 @@ def ai_move(req: AIMoveRequest):
     if _game.is_game_over():
         raise HTTPException(status_code=400, detail="La partie est terminée.")
 
-    level = req.level.lower()
+    agent = req.agent.lower()
 
-    if level not in difficulty.LEVELS:
+    if agent not in AGENTS:
         raise HTTPException(
             status_code=400,
-            detail=f"Niveau inconnu : '{req.level}'. Niveaux disponibles : {list(difficulty.LEVELS.keys())}",
+            detail=f"Agent inconnu : '{req.agent}'. Agents disponibles : {list(AGENTS.keys())}",
         )
 
-    config = difficulty.LEVELS[level]
-    depth_used = config["depth"]
+    depth_used = req.depth
 
     start_time = time.time()
-    hole = difficulty.choose_move(_game, level)
+    hole = difficulty.choose_move_by_agent(_game, agent, depth_used)
     elapsed_ms = round((time.time() - start_time) * 1000, 1)
 
     if hole is None:
@@ -276,8 +301,7 @@ def ai_move(req: AIMoveRequest):
         "depth": depth_used,
         "nodes_explored": None,
         "win_rate": None,
-        "level": level,
-        "agent": config["agent"],
+        "agent": agent,
         "pit_played": pit_played,
     }
 
