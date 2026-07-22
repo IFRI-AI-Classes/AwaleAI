@@ -277,7 +277,8 @@ class AwaleGame {
             const seed = document.createElement('div');
             seed.className = 'seed';
             const angle  = (i / seedCount) * 2 * Math.PI;
-            const radius = Math.min(15, 20 - seedCount);
+            // Rayon planché à 3px pour éviter un rayon négatif quand seedCount > 20
+            const radius = Math.max(3, Math.min(15, 20 - seedCount));
             const x = Math.cos(angle) * radius;
             const y = Math.sin(angle) * radius;
             seed.style.left = `calc(50% + ${x}px - 6px)`;
@@ -494,19 +495,25 @@ class AwaleGame {
         this.pits.forEach(pit => {
             const idx = parseInt(pit.dataset.index);
             pit.classList.remove('pit--playable', 'pit--disabled');
+            // Si la liste est vide ou absente, toutes les cases restent neutres
             if (!validMoves || validMoves.length === 0) return;
             if (validMoves.includes(idx)) {
                 pit.classList.add('pit--playable');
+                // Assure que les cases jouables répondent bien au clic
+                pit.style.pointerEvents = '';
             } else {
                 pit.classList.add('pit--disabled');
+                // Bloque les événements JS sur les cases non jouables
+                pit.style.pointerEvents = 'none';
             }
         });
     }
 
-    /** Efface toute surbrillance */
+    /** Efface toute surbrillance et réactive tous les événements de clic */
     _clearHighlights() {
         this.pits.forEach(pit => {
             pit.classList.remove('pit--playable', 'pit--disabled', 'pit--active', 'pit--captured');
+            pit.style.pointerEvents = '';
         });
     }
 
@@ -588,8 +595,12 @@ class AwaleGame {
     renderGameState() {
         if (!this.gameState) return;
 
-        this.pits.forEach((pit, index) => {
-            this._renderSeeds(pit, this.gameState.board[index]);
+        // Utilise data-index (position logique) et non l'ordre DOM
+        // — l'ordre DOM (top-row 11→6, bottom-row 0→5) ne correspond pas
+        //   à l'ordre du tableau board[] renvoyé par l'API (0→11).
+        this.pits.forEach((pit) => {
+            const idx = parseInt(pit.dataset.index);
+            this._renderSeeds(pit, this.gameState.board[idx]);
         });
 
         this.updateScores(this.gameState.scores.player1, this.gameState.scores.player2);
