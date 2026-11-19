@@ -1,40 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="382" font-family="Segoe UI, Arial, sans-serif">
-<rect width="720" height="382" fill="#fffaf2"/>
-<text x="360.0" y="34" text-anchor="middle" font-size="20" font-weight="bold" fill="#3b2a1a">Benchmark AwaleAI — résultats cumulés</text>
-<text x="118" y="89.0" text-anchor="end" font-size="16" fill="#3b2a1a">Minimax</text>
-<rect x="130.0" y="60" width="440.0" height="46" fill="#2e9d5b"/>
-<text x="350.0" y="88.0" text-anchor="middle" font-size="14" fill="white">120</text>
-<rect x="570.0" y="60" width="62.3" height="46" fill="#c9a227"/>
-<text x="601.2" y="88.0" text-anchor="middle" font-size="14" fill="white">17</text>
-<rect x="632.3" y="60" width="47.7" height="46" fill="#c0473a"/>
-<text x="656.2" y="88.0" text-anchor="middle" font-size="14" fill="white">13</text>
-<text x="686" y="88.0" font-size="13" fill="#3b2a1a">80 %</text>
-<text x="118" y="157.0" text-anchor="end" font-size="16" fill="#3b2a1a">Alpha-Bêta</text>
-<rect x="130.0" y="128" width="414.3" height="46" fill="#2e9d5b"/>
-<text x="337.2" y="156.0" text-anchor="middle" font-size="14" fill="white">113</text>
-<rect x="544.3" y="128" width="62.3" height="46" fill="#c9a227"/>
-<text x="575.5" y="156.0" text-anchor="middle" font-size="14" fill="white">17</text>
-<rect x="606.7" y="128" width="73.3" height="46" fill="#c0473a"/>
-<text x="643.3" y="156.0" text-anchor="middle" font-size="14" fill="white">20</text>
-<text x="686" y="156.0" font-size="13" fill="#3b2a1a">75 %</text>
-<text x="118" y="225.0" text-anchor="end" font-size="16" fill="#3b2a1a">Q-Learning</text>
-<rect x="130.0" y="196" width="102.7" height="46" fill="#2e9d5b"/>
-<text x="181.3" y="224.0" text-anchor="middle" font-size="14" fill="white">28</text>
-<rect x="232.7" y="196" width="7.3" height="46" fill="#c9a227"/>
-<rect x="240.0" y="196" width="440.0" height="46" fill="#c0473a"/>
-<text x="460.0" y="224.0" text-anchor="middle" font-size="14" fill="white">120</text>
-<text x="686" y="224.0" font-size="13" fill="#3b2a1a">19 %</text>
-<text x="118" y="293.0" text-anchor="end" font-size="16" fill="#3b2a1a">Aléatoire</text>
-<rect x="130.0" y="264" width="73.3" height="46" fill="#2e9d5b"/>
-<text x="166.7" y="292.0" text-anchor="middle" font-size="14" fill="white">20</text>
-<rect x="203.3" y="264" width="7.3" height="46" fill="#c9a227"/>
-<rect x="210.7" y="264" width="469.3" height="46" fill="#c0473a"/>
-<text x="445.3" y="292.0" text-anchor="middle" font-size="14" fill="white">128</text>
-<text x="686" y="292.0" font-size="13" fill="#3b2a1a">13 %</text>
-<rect x="130" y="348" width="14" height="14" fill="#2e9d5b"/>
-<text x="150" y="360" font-size="14" fill="#3b2a1a">Victoires</text>
-<rect x="280" y="348" width="14" height="14" fill="#c9a227"/>
-<text x="300" y="360" font-size="14" fill="#3b2a1a">Nuls</text>
-<rect x="430" y="348" width="14" height="14" fill="#c0473a"/>
-<text x="450" y="360" font-size="14" fill="#3b2a1a">Défaites</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="386" font-family="Arial, sans-serif">
+<rect width="720" height="386" rx="12" fill="#F4F9FE" stroke="#BFD9F0" stroke-width="1.5"/>
+<text x="360.0" y="36" text-anchor="middle" font-size="19" font-weight="bold" fill="#0978D5">Benchmark AwaleAI — 50 parties par duel</text>
+<text x="118" y="91.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Minimax</text>
+<rect x="130.0" y="62" width="432.0" height="46" fill="#0978D5"/>
+<text x="346.0" y="90.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">120</text>
+<rect x="562.0" y="62" width="61.2" height="46" fill="#9DB8D9"/>
+<text x="592.6" y="90.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#10324F">17</text>
+<rect x="623.2" y="62" width="46.8" height="46" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="646.6" y="90.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#595959">13</text>
+<text x="678" y="90.0" font-size="14" font-weight="bold" fill="#0978D5">80 %</text>
+<text x="118" y="159.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Alpha-Bêta</text>
+<rect x="130.0" y="130" width="406.8" height="46" fill="#0978D5"/>
+<text x="333.4" y="158.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">113</text>
+<rect x="536.8" y="130" width="61.2" height="46" fill="#9DB8D9"/>
+<text x="567.4" y="158.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#10324F">17</text>
+<rect x="598.0" y="130" width="72.0" height="46" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="634.0" y="158.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#595959">20</text>
+<text x="678" y="158.0" font-size="14" font-weight="bold" fill="#0978D5">75 %</text>
+<text x="118" y="227.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Q-Learning</text>
+<rect x="130.0" y="198" width="100.8" height="46" fill="#0978D5"/>
+<text x="180.4" y="226.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">28</text>
+<rect x="230.8" y="198" width="7.2" height="46" fill="#9DB8D9"/>
+<rect x="238.0" y="198" width="432.0" height="46" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="454.0" y="226.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#595959">120</text>
+<text x="678" y="226.0" font-size="14" font-weight="bold" fill="#0978D5">19 %</text>
+<text x="118" y="295.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Aléatoire</text>
+<rect x="130.0" y="266" width="72.0" height="46" fill="#0978D5"/>
+<text x="166.0" y="294.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">20</text>
+<rect x="202.0" y="266" width="7.2" height="46" fill="#9DB8D9"/>
+<rect x="209.2" y="266" width="460.8" height="46" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="439.6" y="294.0" text-anchor="middle" font-size="14" font-weight="bold" fill="#595959">128</text>
+<text x="678" y="294.0" font-size="14" font-weight="bold" fill="#0978D5">13 %</text>
+<rect x="130" y="354" width="14" height="14" rx="2" fill="#0978D5"/>
+<text x="150" y="366" font-size="14" fill="#10324F">Victoires</text>
+<rect x="280" y="354" width="14" height="14" rx="2" fill="#9DB8D9"/>
+<text x="300" y="366" font-size="14" fill="#10324F">Nuls</text>
+<rect x="430" y="354" width="14" height="14" rx="2" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="450" y="366" font-size="14" fill="#10324F">Défaites</text>
 </svg>

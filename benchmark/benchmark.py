@@ -397,38 +397,41 @@ def build_markdown(cfg: dict, agg: dict, agree: Optional[dict], elapsed: float) 
 
 
 def build_svg(agg: dict) -> str:
-    """Histogramme empilé victoires / nuls / défaites (SVG autonome)."""
+    """Histogramme empilé victoires / nuls / défaites (SVG aux couleurs du deck)."""
     pa, ranking = agg["per_agent"], agg["ranking"]
-    W, bar_h, gap, left, top = 720, 46, 22, 130, 60
-    H = top + len(ranking) * (bar_h + gap) + 50
-    width = W - left - 40
-    colors = {"wins": "#2e9d5b", "draws": "#c9a227", "losses": "#c0473a"}
+    W, bar_h, gap, left, top = 720, 46, 22, 130, 62
+    H = top + len(ranking) * (bar_h + gap) + 52
+    width = W - left - 50
+    colors = {"wins": "#0978D5", "draws": "#9DB8D9", "losses": "#E8F3FC"}
+    text_in = {"wins": "#FFFFFF", "draws": "#10324F", "losses": "#595959"}
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-           f'font-family="Segoe UI, Arial, sans-serif">',
-           f'<rect width="{W}" height="{H}" fill="#fffaf2"/>',
-           f'<text x="{W/2}" y="34" text-anchor="middle" font-size="20" font-weight="bold" '
-           f'fill="#3b2a1a">Benchmark AwaleAI — résultats cumulés</text>']
+           f'font-family="Arial, sans-serif">',
+           f'<rect width="{W}" height="{H}" rx="12" fill="#F4F9FE" stroke="#BFD9F0" stroke-width="1.5"/>',
+           f'<text x="{W/2}" y="36" text-anchor="middle" font-size="19" font-weight="bold" '
+           f'fill="#0978D5">Benchmark AwaleAI — 50 parties par duel</text>']
     for i, a in enumerate(ranking):
         s = pa[a]
         y = top + i * (bar_h + gap)
         out.append(f'<text x="{left - 12}" y="{y + bar_h/2 + 6}" text-anchor="end" '
-                   f'font-size="16" fill="#3b2a1a">{LABELS[a]}</text>')
+                   f'font-size="15" font-weight="bold" fill="#10324F">{LABELS[a]}</text>')
         x = left
         for k in ("wins", "draws", "losses"):
             w = width * s[k] / max(1, s["games"])
             if w > 0:
-                out.append(f'<rect x="{x:.1f}" y="{y}" width="{w:.1f}" height="{bar_h}" fill="{colors[k]}"/>')
-                if w > 34:
+                stroke = ' stroke="#BFD9F0" stroke-width="1"' if k == "losses" else ''
+                out.append(f'<rect x="{x:.1f}" y="{y}" width="{w:.1f}" height="{bar_h}" fill="{colors[k]}"{stroke}/>')
+                if w > 30:
                     out.append(f'<text x="{x + w/2:.1f}" y="{y + bar_h/2 + 5}" text-anchor="middle" '
-                               f'font-size="14" fill="white">{s[k]}</text>')
+                               f'font-size="14" font-weight="bold" fill="{text_in[k]}">{s[k]}</text>')
             x += w
-        out.append(f'<text x="{left + width + 6}" y="{y + bar_h/2 + 5}" font-size="13" '
-                   f'fill="#3b2a1a">{pct(s["win_rate"])}</text>')
-    ly = H - 22
+        out.append(f'<text x="{left + width + 8}" y="{y + bar_h/2 + 5}" font-size="14" font-weight="bold" '
+                   f'fill="#0978D5">{pct(s["win_rate"])}</text>')
+    ly = H - 20
     for j, (k, lab) in enumerate((("wins", "Victoires"), ("draws", "Nuls"), ("losses", "Défaites"))):
         lx = left + j * 150
-        out.append(f'<rect x="{lx}" y="{ly - 12}" width="14" height="14" fill="{colors[k]}"/>')
-        out.append(f'<text x="{lx + 20}" y="{ly}" font-size="14" fill="#3b2a1a">{lab}</text>')
+        stroke = ' stroke="#BFD9F0" stroke-width="1"' if k == "losses" else ''
+        out.append(f'<rect x="{lx}" y="{ly - 12}" width="14" height="14" rx="2" fill="{colors[k]}"{stroke}/>')
+        out.append(f'<text x="{lx + 20}" y="{ly}" font-size="14" fill="#10324F">{lab}</text>')
     out.append("</svg>")
     return "\n".join(out)
 
