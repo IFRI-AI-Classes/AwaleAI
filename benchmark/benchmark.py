@@ -405,7 +405,7 @@ def build_svg(agg: dict) -> str:
     colors = {"wins": "#0978D5", "draws": "#9DB8D9", "losses": "#E8F3FC"}
     text_in = {"wins": "#FFFFFF", "draws": "#10324F", "losses": "#595959"}
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-           f'font-family="Arial, sans-serif">',
+           f'font-family="Poppins, Arial, sans-serif">',
            f'<rect width="{W}" height="{H}" rx="12" fill="#F4F9FE" stroke="#BFD9F0" stroke-width="1.5"/>',
            f'<text x="{W/2}" y="36" text-anchor="middle" font-size="19" font-weight="bold" '
            f'fill="#0978D5">Benchmark AwaleAI — 50 parties par duel</text>']

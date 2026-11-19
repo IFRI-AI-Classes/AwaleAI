@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="386" font-family="Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="386" font-family="Poppins, Arial, sans-serif">
 <rect width="720" height="386" rx="12" fill="#F4F9FE" stroke="#BFD9F0" stroke-width="1.5"/>
 <text x="360.0" y="36" text-anchor="middle" font-size="19" font-weight="bold" fill="#0978D5">Benchmark AwaleAI — 50 parties par duel</text>
 <text x="118" y="91.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Minimax</text>
