@@ -1,0 +1,249 @@
+{
+  "config": {
+    "date": "2026-11-19 19:08",
+    "games": 50,
+    "depths": {
+      "minimax": 4,
+      "alphabeta": 4
+    },
+    "agents": [
+      "random",
+      "minimax",
+      "alphabeta",
+      "qlearning"
+    ],
+    "opening_plies": 2,
+    "max_plies": 400,
+    "seed": 2026
+  },
+  "elapsed_s": 44.38345805100107,
+  "duels": {
+    "random|minimax": {
+      "a": "random",
+      "b": "minimax",
+      "games": 50,
+      "wins_a": 0,
+      "wins_b": 50,
+      "draws": 0,
+      "win_rate_a": 0.0,
+      "win_rate_b": 1.0,
+      "avg_seeds_a": 3.54,
+      "avg_seeds_b": 28.56,
+      "avg_plies": 47.18,
+      "wins_a_as_p1": 0,
+      "wins_a_as_p2": 0,
+      "end_reasons": {
+        "score": 47,
+        "blocage": 3,
+        "repetition": 0,
+        "limite": 0
+      },
+      "ms_per_move_a": 0.04332364449432185,
+      "ms_per_move_b": 46.273254763570264
+    },
+    "random|alphabeta": {
+      "a": "random",
+      "b": "alphabeta",
+      "games": 50,
+      "wins_a": 0,
+      "wins_b": 50,
+      "draws": 0,
+      "win_rate_a": 0.0,
+      "win_rate_b": 1.0,
+      "avg_seeds_a": 3.06,
+      "avg_seeds_b": 28.78,
+      "avg_plies": 43.38,
+      "wins_a_as_p1": 0,
+      "wins_a_as_p2": 0,
+      "end_reasons": {
+        "score": 49,
+        "blocage": 1,
+        "repetition": 0,
+        "limite": 0
+      },
+      "ms_per_move_a": 0.0311764119862289,
+      "ms_per_move_b": 8.574531640121496
+    },
+    "random|qlearning": {
+      "a": "random",
+      "b": "qlearning",
+      "games": 50,
+      "wins_a": 20,
+      "wins_b": 28,
+      "draws": 2,
+      "win_rate_a": 0.4,
+      "win_rate_b": 0.56,
+      "avg_seeds_a": 19.56,
+      "avg_seeds_b": 21.12,
+      "avg_plies": 144.02,
+      "wins_a_as_p1": 9,
+      "wins_a_as_p2": 11,
+      "end_reasons": {
+        "score": 37,
+        "blocage": 11,
+        "repetition": 2,
+        "limite": 0
+      },
+      "ms_per_move_a": 0.035097751674045975,
+      "ms_per_move_b": 0.6464635988529913
+    },
+    "minimax|alphabeta": {
+      "a": "minimax",
+      "b": "alphabeta",
+      "games": 50,
+      "wins_a": 20,
+      "wins_b": 13,
+      "draws": 17,
+      "win_rate_a": 0.4,
+      "win_rate_b": 0.26,
+      "avg_seeds_a": 21.34,
+      "avg_seeds_b": 19.3,
+      "avg_plies": 170.96,
+      "wins_a_as_p1": 9,
+      "wins_a_as_p2": 11,
+      "end_reasons": {
+        "score": 30,
+        "blocage": 3,
+        "repetition": 17,
+        "limite": 0
+      },
+      "ms_per_move_a": 30.557165408557925,
+      "ms_per_move_b": 6.312855972566195
+    },
+    "minimax|qlearning": {
+      "a": "minimax",
+      "b": "qlearning",
+      "games": 50,
+      "wins_a": 50,
+      "wins_b": 0,
+      "draws": 0,
+      "win_rate_a": 1.0,
+      "win_rate_b": 0.0,
+      "avg_seeds_a": 34.58,
+      "avg_seeds_b": 2.5,
+      "avg_plies": 50.42,
+      "wins_a_as_p1": 25,
+      "wins_a_as_p2": 25,
+      "end_reasons": {
+        "score": 40,
+        "blocage": 10,
+        "repetition": 0,
+        "limite": 0
+      },
+      "ms_per_move_a": 44.80136167652342,
+      "ms_per_move_b": 0.06728730536550315
+    },
+    "alphabeta|qlearning": {
+      "a": "alphabeta",
+      "b": "qlearning",
+      "games": 50,
+      "wins_a": 50,
+      "wins_b": 0,
+      "draws": 0,
+      "win_rate_a": 1.0,
+      "win_rate_b": 0.0,
+      "avg_seeds_a": 33.58,
+      "avg_seeds_b": 2.14,
+      "avg_plies": 50.9,
+      "wins_a_as_p1": 25,
+      "wins_a_as_p2": 25,
+      "end_reasons": {
+        "score": 44,
+        "blocage": 6,
+        "repetition": 0,
+        "limite": 0
+      },
+      "ms_per_move_a": 7.512497388074827,
+      "ms_per_move_b": 0.04574528990086353
+    }
+  },
+  "per_agent": {
+    "random": {
+      "games": 150,
+      "wins": 20,
+      "draws": 2,
+      "losses": 128,
+      "seeds_for": 1308,
+      "seeds_against": 3923,
+      "time": 0.20478162688959856,
+      "moves": 5687,
+      "nodes": 0,
+      "win_rate": 0.13333333333333333,
+      "points": 21.0,
+      "avg_seeds_for": 8.72,
+      "avg_seeds_against": 26.153333333333332,
+      "ms_per_move": 0.03600872637411615,
+      "nodes_per_move": null
+    },
+    "minimax": {
+      "games": 150,
+      "wins": 120,
+      "draws": 17,
+      "losses": 13,
+      "seeds_for": 4224,
+      "seeds_against": 1267,
+      "time": 236.77070328695117,
+      "moves": 6591,
+      "nodes": 2993587,
+      "win_rate": 0.8,
+      "points": 128.5,
+      "avg_seeds_for": 28.16,
+      "avg_seeds_against": 8.446666666666667,
+      "ms_per_move": 35.92333534925674,
+      "nodes_per_move": 454.1931421635564
+    },
+    "alphabeta": {
+      "games": 150,
+      "wins": 113,
+      "draws": 17,
+      "losses": 20,
+      "seeds_for": 4083,
+      "seeds_against": 1327,
+      "time": 44.90834681765409,
+      "moves": 6504,
+      "nodes": 906859,
+      "win_rate": 0.7533333333333333,
+      "points": 121.5,
+      "avg_seeds_for": 27.22,
+      "avg_seeds_against": 8.846666666666666,
+      "ms_per_move": 6.904727370488022,
+      "nodes_per_move": 139.4309655596556
+    },
+    "qlearning": {
+      "games": 150,
+      "wins": 28,
+      "draws": 2,
+      "losses": 120,
+      "seeds_for": 1288,
+      "seeds_against": 4386,
+      "time": 2.4328471593325958,
+      "moves": 5961,
+      "nodes": 0,
+      "win_rate": 0.18666666666666668,
+      "points": 29.0,
+      "avg_seeds_for": 8.586666666666666,
+      "avg_seeds_against": 29.24,
+      "ms_per_move": 0.40812735435876457,
+      "nodes_per_move": null
+    }
+  },
+  "ranking": [
+    "minimax",
+    "alphabeta",
+    "qlearning",
+    "random"
+  ],
+  "minimax_vs_alphabeta": {
+    "depth": 4,
+    "positions": 200,
+    "same_rate": 0.945,
+    "ab_optimal_rate": 1.0,
+    "mm_optimal_rate": 1.0,
+    "tie_rate": 0.115,
+    "same_rate_no_ties": 1.0,
+    "nodes_mm": 675.415,
+    "nodes_ab": 218.4,
+    "ms_mm": 51.70263936415722,
+    "ms_ab": 10.94863430094847
+  }
+}
