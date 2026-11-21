@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="390" viewBox="0 0 780 390" font-family="Poppins, Arial, sans-serif">
+<rect width="780" height="390" rx="12" fill="#F4F9FE" stroke="#BFD9F0" stroke-width="1.5"/>
+<text x="390.0" y="34" text-anchor="middle" font-size="19" font-weight="bold" fill="#0978D5">Tournoi AwaleAI — 300 parties au total</text>
+<text x="390.0" y="56" text-anchor="middle" font-size="12.5" fill="#595959">150 parties par agent (50 contre chacun des 3 adversaires) · Profondeur 4</text>
+<text x="730" y="76" text-anchor="middle" font-size="11.5" font-weight="bold" fill="#595959">Taux V.</text>
+<text x="121" y="113.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Minimax</text>
+<rect x="135.0" y="86" width="440.0" height="44" fill="#0978D5"/>
+<text x="355.0" y="113.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">120</text>
+<rect x="575.0" y="86" width="62.3" height="44" fill="#9DB8D9"/>
+<text x="606.2" y="113.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#10324F">17</text>
+<rect x="637.3" y="86" width="47.7" height="44" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="661.2" y="113.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#595959">13</text>
+<text x="730" y="113.0" text-anchor="middle" font-size="15" font-weight="bold" fill="#0978D5">80 %</text>
+<text x="121" y="175.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Alpha-Bêta</text>
+<rect x="135.0" y="148" width="414.3" height="44" fill="#0978D5"/>
+<text x="342.2" y="175.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">113</text>
+<rect x="549.3" y="148" width="62.3" height="44" fill="#9DB8D9"/>
+<text x="580.5" y="175.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#10324F">17</text>
+<rect x="611.7" y="148" width="73.3" height="44" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="648.3" y="175.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#595959">20</text>
+<text x="730" y="175.0" text-anchor="middle" font-size="15" font-weight="bold" fill="#0978D5">75 %</text>
+<text x="121" y="237.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Q-Learning</text>
+<rect x="135.0" y="210" width="102.7" height="44" fill="#0978D5"/>
+<text x="186.3" y="237.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">28</text>
+<rect x="237.7" y="210" width="7.3" height="44" fill="#9DB8D9"/>
+<rect x="245.0" y="210" width="440.0" height="44" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="465.0" y="237.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#595959">120</text>
+<text x="730" y="237.0" text-anchor="middle" font-size="15" font-weight="bold" fill="#0978D5">19 %</text>
+<text x="121" y="299.0" text-anchor="end" font-size="15" font-weight="bold" fill="#10324F">Aléatoire</text>
+<rect x="135.0" y="272" width="73.3" height="44" fill="#0978D5"/>
+<text x="171.7" y="299.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#FFFFFF">20</text>
+<rect x="208.3" y="272" width="7.3" height="44" fill="#9DB8D9"/>
+<rect x="215.7" y="272" width="469.3" height="44" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="450.3" y="299.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#595959">128</text>
+<text x="730" y="299.0" text-anchor="middle" font-size="15" font-weight="bold" fill="#0978D5">13 %</text>
+<rect x="135" y="358" width="14" height="14" rx="2" fill="#0978D5"/>
+<text x="155" y="370" font-size="13.5" fill="#10324F">Victoires</text>
+<rect x="290" y="358" width="14" height="14" rx="2" fill="#9DB8D9"/>
+<text x="310" y="370" font-size="13.5" fill="#10324F">Nuls</text>
+<rect x="445" y="358" width="14" height="14" rx="2" fill="#E8F3FC" stroke="#BFD9F0" stroke-width="1"/>
+<text x="465" y="370" font-size="13.5" fill="#10324F">Défaites</text>
+</svg>
