@@ -1,0 +1,72 @@
+{
+  "unique_games": 50,
+  "agents": {
+    "random": {
+      "wins": 1,
+      "draws": 1,
+      "losses": 23,
+      "games": 25,
+      "first_player_games": 13,
+      "second_player_games": 12,
+      "decision_seconds": 0.03578489998471923,
+      "agent_moves": 1034,
+      "win_rate_denominator": 25,
+      "win_rate": 0.04,
+      "mean_decision_ms": 0.03460822048812305
+    },
+    "minimax": {
+      "wins": 17,
+      "draws": 3,
+      "losses": 5,
+      "games": 25,
+      "first_player_games": 13,
+      "second_player_games": 12,
+      "decision_seconds": 5.992190199969627,
+      "agent_moves": 955,
+      "win_rate_denominator": 25,
+      "win_rate": 0.68,
+      "mean_decision_ms": 6.274544712010081
+    },
+    "alphabeta": {
+      "wins": 21,
+      "draws": 3,
+      "losses": 1,
+      "games": 25,
+      "first_player_games": 12,
+      "second_player_games": 13,
+      "decision_seconds": 3.0252784000076645,
+      "agent_moves": 932,
+      "win_rate_denominator": 25,
+      "win_rate": 0.84,
+      "mean_decision_ms": 3.246006866961013
+    },
+    "qlearning": {
+      "wins": 7,
+      "draws": 1,
+      "losses": 17,
+      "games": 25,
+      "first_player_games": 12,
+      "second_player_games": 13,
+      "decision_seconds": 0.05569430002287845,
+      "agent_moves": 1134,
+      "win_rate_denominator": 25,
+      "win_rate": 0.28,
+      "mean_decision_ms": 0.049113139349980996
+    }
+  },
+  "duels": {
+    "random:minimax": 8,
+    "random:alphabeta": 8,
+    "random:qlearning": 9,
+    "minimax:alphabeta": 9,
+    "minimax:qlearning": 8,
+    "alphabeta:qlearning": 8
+  },
+  "end_reasons": {
+    "score": 42,
+    "repetition": 4,
+    "blocage": 4
+  },
+  "csv_sha256": "2e6e3f426a69b8ee6838c5fca7c542a109fcbd42abeb9fc71ccc2068049a5292",
+  "total_game_duration_seconds": 9.62531410001975
+}

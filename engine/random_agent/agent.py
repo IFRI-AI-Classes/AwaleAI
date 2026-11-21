@@ -1,5 +1,4 @@
 import random
-from ..rules import Rules
 
 class RandomAgent:
     """
@@ -10,8 +9,14 @@ class RandomAgent:
         Args:
             player (int): Le numéro du joueur (1 ou 2) que cet agent représente.
         """
+        if type(player) is not int or player not in (1, 2):
+            raise ValueError("player doit être 1 ou 2.")
         self.player = player
 
     def choose_move(self, game):
-        valid_moves = [hole for hole in range(12) if hole in Rules.get_valid_moves(game.board, self.player)]
+        if game.is_game_over():
+            return None
+        if self.player != game.current_player:
+            raise ValueError("Ce n'est pas le tour de cet agent.")
+        valid_moves = game.get_valid_moves()
         return random.choice(valid_moves) if valid_moves else None

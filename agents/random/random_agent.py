@@ -1,8 +1,7 @@
 import random
-from engine.rules import Rules
 
 
-def random_move(game) -> int:
+def random_move(game) -> int | None:
     """Choose a random legal move for the current player.
 
     Args:
@@ -11,5 +10,5 @@ def random_move(game) -> int:
     Returns:
         int: Randomly selected hole index.
     """
-    valid_moves = Rules.get_valid_moves(game.board, game.current_player)
-    return random.choice(valid_moves)
+    valid_moves = game.get_valid_moves()
+    return random.choice(valid_moves) if valid_moves else None

@@ -1,0 +1,86 @@
+{
+  "started_at_utc": "2026-11-21T16:31:07.861232+00:00",
+  "python": "3.13.0 (tags/v3.13.0:60403a5, Oct  7 2024, 09:38:07) [MSC v.1941 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "config": {
+    "total_games": 50,
+    "agents": [
+      "random",
+      "minimax",
+      "alphabeta",
+      "qlearning"
+    ],
+    "extra_duels": [
+      [
+        "random",
+        "qlearning"
+      ],
+      [
+        "minimax",
+        "alphabeta"
+      ]
+    ],
+    "master_seed": 20261121,
+    "opening_plies": 4,
+    "max_plies": 500,
+    "depths": {
+      "minimax": 3,
+      "alphabeta": 3
+    },
+    "qlearning": {
+      "checkpoint": "best",
+      "path": "models/q_table_best.json",
+      "sha256": "570da4fca1bc35e42961a7f3b68ee7d714469085fd14ff01761186619cea4ce8",
+      "greedy": true,
+      "training": false
+    },
+    "output_directory": "benchmark/results/presentation_50",
+    "chart": {
+      "filename": "benchmark_50.png",
+      "title": "Benchmark des agents IA : 50 parties",
+      "width_inches": 16,
+      "height_inches": 9,
+      "dpi": 300,
+      "colors": {
+        "wins": "#2255D6",
+        "draws": "#B4D9F2",
+        "losses": "#173B65"
+      }
+    }
+  },
+  "config_sha256": "6021d5305706c4717bf712636d1ff48c0b26faee6c1789a2e4bfe1f16dd17191",
+  "source_sha256": {
+    "engine/board.py": "d893a95e53b62cba43dd1d4db07dd3b968646ac6999bb98514f639fd6be303b5",
+    "engine/rules.py": "a2c726691ddc2968d2de63575d47e894c31c62a388d2924d2a12eaf689d48f3a",
+    "engine/game.py": "dfbee76fe4aff964713bf0d6ffa05978d2559b6fce05e41078aa29e4528c963d",
+    "agents/difficulty.py": "f24b68d5dae5a7724c35389176db01f318eaa5b471dd33f29fac669283c0bbdf",
+    "agents/random/random_agent.py": "ecf360736a996ed980a5880817adf245d001a6b6216599b17d4d90c5cbd8cd5d",
+    "agents/minimax/minimax.py": "07020ffa698fb0f57ffc7517512d6d787173005da218081c2fd13e9ab0cc436c",
+    "agents/alpha_beta/elagage.py": "d774ae067a39d59f0a0c58fb10002a778d8f4aee361c54586a13bcc1aca8a7ce",
+    "agents/heuristic/heuristic.py": "f2d992cd9966a39eb5317a22cb419c56e341ddc384c14645e0519265e0416a8a",
+    "awale/ai/qlearning.py": "e9fdaf2e10de97eb3d1fb8da57bf8ce16dc214ba0028831649f58048bbbda4db"
+  },
+  "model_files_sha256": {
+    "models/q_table_best.json": "570da4fca1bc35e42961a7f3b68ee7d714469085fd14ff01761186619cea4ce8",
+    "models/q_table_latest.json": "a79a0c9fc020188d11d7799b39aa8f295a23553d82c9391f6a096109d8b26028"
+  },
+  "benchmark_script_sha256": "53bc95abc7b799b68ca8e2d6d070892c6aa38bf21f795238c47c37dbc2062f74",
+  "git_head": "9f58689dffeb15bb57b17a1d680baf87149c1371",
+  "git_branch": "main",
+  "qlearning": {
+    "path": "models/q_table_best.json",
+    "sha256": "570da4fca1bc35e42961a7f3b68ee7d714469085fd14ff01761186619cea4ce8",
+    "states": 87282,
+    "greedy": true,
+    "training": false,
+    "loaded_alpha": 0.15,
+    "loaded_gamma": 0.95,
+    "loaded_epsilon": 0.05000000000000236,
+    "epsilon_applied_to_decisions": 0.0,
+    "total_episodes_in_checkpoint": 1520
+  },
+  "duration_definition": "Wall time from game creation and opening to terminal state, including decision validation and move trace hashing; excludes model load and post-run verification.",
+  "rng_protocol": "Independent opening RNG; Python global random reset to the recorded seed before each game's agent decisions; sequential execution.",
+  "finished_at_utc": "2026-11-21T16:31:18.326118+00:00",
+  "completed_games": 50
+}

@@ -1,0 +1,25 @@
+{
+  "total_games": 50,
+  "agents": ["random", "minimax", "alphabeta", "qlearning"],
+  "extra_duels": [["random", "qlearning"], ["minimax", "alphabeta"]],
+  "master_seed": 20261121,
+  "opening_plies": 4,
+  "max_plies": 500,
+  "depths": {"minimax": 3, "alphabeta": 3},
+  "qlearning": {
+    "checkpoint": "best",
+    "path": "models/q_table_best.json",
+    "sha256": "570da4fca1bc35e42961a7f3b68ee7d714469085fd14ff01761186619cea4ce8",
+    "greedy": true,
+    "training": false
+  },
+  "output_directory": "benchmark/results/presentation_50",
+  "chart": {
+    "filename": "benchmark_50.png",
+    "title": "Benchmark des agents IA : 50 parties",
+    "width_inches": 16,
+    "height_inches": 9,
+    "dpi": 300,
+    "colors": {"wins": "#2255D6", "draws": "#B4D9F2", "losses": "#173B65"}
+  }
+}

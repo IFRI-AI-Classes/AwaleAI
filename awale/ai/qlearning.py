@@ -7,6 +7,7 @@ import math
 import os
 import random
 import time
+import tempfile
 from typing import Dict, List, Optional, Tuple
 
 from engine.game import Game
@@ -69,7 +70,10 @@ def encode_action(game: Game, hole: int) -> int:
     Convertit un indice absolu (0-11) en indice relatif (0-5)
     du point de vue du joueur courant.
     """
-    return hole if game.current_player == 1 else hole - 6
+    start = 0 if game.current_player == 1 else 6
+    if type(hole) is not int or not start <= hole < start + 6:
+        raise ValueError("L'action doit appartenir au joueur actif.")
+    return hole - start
 
 
 def decode_action(game: Game, relative_action: int) -> int:
@@ -77,6 +81,8 @@ def decode_action(game: Game, relative_action: int) -> int:
     Convertit un indice relatif (0-5) en indice absolu (0-11)
     selon le joueur courant.
     """
+    if type(relative_action) is not int or not 0 <= relative_action < 6:
+        raise ValueError("L'action relative doit être un entier de 0 à 5.")
     return relative_action if game.current_player == 1 else relative_action + 6
 
 
@@ -89,7 +95,14 @@ class QLearningAgent:
         gamma: float = GAMMA,
         epsilon: float = EPSILON_START,
         epsilon_min: float = EPSILON_MIN,
+        checkpoint: str = "best",
+        model_dir=None,
+        load_models: bool = True,
     ) -> None:
+        if checkpoint not in ('best', 'latest'):
+            raise ValueError("checkpoint doit être 'best' ou 'latest'.")
+        self.checkpoint = checkpoint
+        self.loaded_path = None
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -99,8 +112,25 @@ class QLearningAgent:
         self.total_episodes: int = 0
         self.best_win_rate: float = 0.0
         self._epsilon_decay: float = 0.0
+        self._latest_path = os.path.join(os.fspath(model_dir), 'q_table_latest.json') if model_dir is not None else PATH_LATEST
+        self._best_path = os.path.join(os.fspath(model_dir), 'q_table_best.json') if model_dir is not None else PATH_BEST
+        self._validate_parameters(alpha, gamma, epsilon, epsilon_min, self._epsilon_decay)
+        if load_models:
+            self.load()
 
-        self.load()
+    @staticmethod
+    def _validate_parameters(alpha, gamma, epsilon, epsilon_min, decay):
+        for name, value, low, high in (
+            ('alpha', alpha, 0, 1), ('gamma', gamma, 0, 1),
+            ('epsilon', epsilon, 0, 1), ('epsilon_min', epsilon_min, 0, 1),
+            ('epsilon_decay', decay, 0, float('inf')),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise ValueError(f"{name} doit être un nombre fini.")
+            if not low <= value <= high or (name == 'alpha' and value == 0):
+                raise ValueError(f"{name} hors limites.")
+        if epsilon < epsilon_min:
+            raise ValueError("epsilon doit être supérieur ou égal à epsilon_min.")
 
     def _get_q(self, state: str, action: int) -> float:
         """Return Q(s, a) with lazy initialization."""
@@ -118,7 +148,7 @@ class QLearningAgent:
             return 0.0
         return max(self._get_q(state, a) for a in valid_actions)
 
-    def choose_move(self, game: Game, greedy: bool = False) -> int:
+    def choose_move(self, game: Game, greedy: bool = False) -> Optional[int]:
         """
         Choose an absolute move index via epsilon-greedy.
 
@@ -129,9 +159,9 @@ class QLearningAgent:
         Returns:
             int: Selected absolute hole index.
         """
-        valid_abs = Rules.get_valid_moves(game.board, game.current_player)
+        valid_abs = game.get_valid_moves()
         if not valid_abs:
-            raise ValueError("Aucun coup valide disponible.")
+            return None
 
         if not greedy and random.random() < self.epsilon:
             return random.choice(valid_abs)
@@ -158,6 +188,16 @@ class QLearningAgent:
         done: bool,
     ) -> None:
         """Apply the Bellman update to Q(s, a)."""
+        if type(done) is not bool or not isinstance(state, str) or not state or not isinstance(next_state, str):
+            raise ValueError("État ou indicateur terminal invalide.")
+        if type(action_rel) is not int or not 0 <= action_rel < 6:
+            raise ValueError("Action relative invalide.")
+        if isinstance(reward, bool) or not isinstance(reward, (int, float)) or not math.isfinite(reward):
+            raise ValueError("La récompense doit être finie.")
+        if not done and (not next_state or not next_valid_actions):
+            raise ValueError("Une transition non terminale exige un état et des actions légales.")
+        if any(type(a) is not int or not 0 <= a < 6 for a in next_valid_actions):
+            raise ValueError("Actions suivantes invalides.")
         q_current = self._get_q(state, action_rel)
         target = reward
         if not done:
@@ -166,212 +206,202 @@ class QLearningAgent:
 
     def set_epsilon_decay(self, n_episodes: int, start: Optional[float] = None) -> None:
         """Configure the linear epsilon decay over a fixed number of episodes."""
+        if type(n_episodes) is not int or n_episodes < 1:
+            raise ValueError("n_episodes doit être un entier positif.")
         if start is not None:
+            self._validate_parameters(self.alpha, self.gamma, start, self.epsilon_min, 0)
             self.epsilon = min(1.0, max(self.epsilon_min, start))
         span = max(self.epsilon - self.epsilon_min, 0.0)
-        self._epsilon_decay = span / max(n_episodes, 1)
+        self._epsilon_decay = span / n_episodes
 
     def decay_epsilon(self) -> None:
         """Apply one linear epsilon decay step."""
         self.epsilon = max(self.epsilon_min, self.epsilon - self._epsilon_decay)
 
-    def _ensure_models_dir(self) -> None:
-        os.makedirs(os.path.normpath(_BASE_DIR), exist_ok=True)
-
-    def save(self, path: str) -> None:
-        """Save the Q-table and metadata to JSON atomically."""
-        self._ensure_models_dir()
-        payload = {
-            "epsilon": self.epsilon,
+    def _checkpoint_payload(self):
+        return {
+            "schema_version": 2,
+            "state_encoding": "relative-pits-scores-v1",
+            "alpha": self.alpha, "gamma": self.gamma,
+            "epsilon": self.epsilon, "epsilon_min": self.epsilon_min,
+            "epsilon_decay": self._epsilon_decay,
             "total_episodes": self.total_episodes,
             "best_win_rate": self.best_win_rate,
             "q_table": self.q_table,
         }
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(payload, f, separators=(",", ":"))
-        os.replace(tmp, path)
+
+    def _validated_checkpoint(self, data):
+        if not isinstance(data, dict) or type(data.get("schema_version", 1)) is not int or data.get("schema_version", 1) not in (1, 2):
+            raise ValueError("Format de checkpoint non supporté.")
+        if data.get("state_encoding", "relative-pits-scores-v1") != "relative-pits-scores-v1":
+            raise ValueError("Encodage d'état incompatible.")
+        table = data.get("q_table", {})
+        if not isinstance(table, dict):
+            raise ValueError("q_table doit être un dictionnaire.")
+        valid_actions = {str(i) for i in range(6)}
+        for state, actions in table.items():
+            if not isinstance(state, str) or not isinstance(actions, dict):
+                raise ValueError("État ou actions mal formés.")
+            for action, value in actions.items():
+                if action not in valid_actions:
+                    raise ValueError("Action persistée hors limites.")
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                    raise ValueError("Valeur Q non finie ou invalide.")
+        params = {name: data.get(name, getattr(self, name))
+                  for name in ("alpha", "gamma", "epsilon", "epsilon_min")}
+        decay = data.get("epsilon_decay", 0.0)
+        self._validate_parameters(**params, decay=decay)
+        episodes = data.get("total_episodes", 0)
+        rate = data.get("best_win_rate", 0.0)
+        if type(episodes) is not int or episodes < 0:
+            raise ValueError("Compteur d'épisodes invalide.")
+        if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not math.isfinite(rate) or not 0 <= rate <= 1:
+            raise ValueError("Taux de victoire invalide.")
+        return table, params, decay, episodes, rate
+
+    def save(self, path: str) -> None:
+        """Atomically save parameters and table to the explicit destination."""
+        payload = self._checkpoint_payload()
+        self._validated_checkpoint(payload)
+        destination = os.path.abspath(os.fspath(path))
+        parent = os.path.dirname(destination)
+        os.makedirs(parent, exist_ok=True)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=parent,
+                                             prefix=".q-table-", suffix=".tmp", delete=False) as f:
+                temporary = f.name
+                json.dump(payload, f, separators=(",", ":"), allow_nan=False)
+            os.replace(temporary, destination)
+        finally:
+            if temporary is not None and os.path.exists(temporary):
+                os.unlink(temporary)
 
     def load(self) -> None:
-        """Load the persisted Q-table, preferring the best checkpoint first."""
-        for path in [PATH_BEST, PATH_LATEST]:
+        """Validate completely before loading; accept legacy version-1 tables."""
+        paths = [self._best_path, self._latest_path] if self.checkpoint == 'best' else [self._latest_path, self._best_path]
+        for path in paths:
             norm = os.path.normpath(path)
             if os.path.isfile(norm):
                 try:
                     with open(norm, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                    self.q_table = data.get("q_table", {})
-                    self.epsilon = float(data.get("epsilon", EPSILON_START))
-                    self.total_episodes = int(data.get("total_episodes", 0))
-                    self.best_win_rate = float(data.get("best_win_rate", 0.0))
-                    print(
-                        f"[QLearning] Chargé depuis {os.path.basename(norm)} "
-                        f"| {len(self.q_table)} états | "
-                        f"ε={self.epsilon:.3f} | épisodes={self.total_episodes}"
-                    )
+                    table, params, decay, episodes, rate = self._validated_checkpoint(data)
+                    self.q_table = table
+                    for name, value in params.items():
+                        setattr(self, name, value)
+                    self._epsilon_decay = decay
+                    self.total_episodes = episodes
+                    self.best_win_rate = rate
+                    self.loaded_path = norm
+                    print(f"[QLearning] Chargé depuis {os.path.basename(norm)} "
+                          f"| {len(table)} états | ε={self.epsilon:.3f} | épisodes={episodes}")
                     return
-                except (json.JSONDecodeError, KeyError) as exc:
+                except (OSError, ValueError, TypeError) as exc:
                     print(f"[QLearning] Erreur lecture {norm}: {exc}")
         print("[QLearning] Démarrage avec une Q-Table vide.")
 
     def save_latest(self) -> None:
-        """Save the latest checkpoint."""
-        self.save(os.path.normpath(PATH_LATEST))
+        self.save(self._latest_path)
 
     def save_best(self) -> None:
-        """Save the best checkpoint."""
-        self.save(os.path.normpath(PATH_BEST))
+        self.save(self._best_path)
+
+def _opponent_move(game, opp_move_fn):
+    """Accept either an absolute move or a search agent's (move, nodes)."""
+    result = opp_move_fn(game)
+    if isinstance(result, tuple) and len(result) != 2:
+        raise ValueError("L'adversaire doit renvoyer un coup ou (coup, nœuds).")
+    move = result[0] if isinstance(result, tuple) else result
+    if not game.play_move(move):
+        raise ValueError(f"L'adversaire a renvoyé un coup invalide : {result}")
+    return move
 
 
 def _opp_captures_after(game: Game, opp_move_fn) -> int:
-    """Estimate how many seeds the opponent would capture after a reply."""
-    sim = Game()
-    sim.board = game.board.copy()
-    sim.score_p1 = game.score_p1
-    sim.score_p2 = game.score_p2
-    sim.current_player = game.current_player  # c'est déjà l'adversaire
-
-    opp = sim.current_player
-    score_before = sim.score_p1 if opp == 1 else sim.score_p2
-
-    try:
-        move = opp_move_fn(sim)
-        sim.play_move(move)
-    except Exception:
+    """Simulate a legal reply without swallowing agent errors."""
+    sim = game.copy()
+    if sim.is_game_over():
         return 0
+    opp = sim.current_player
+    before = sim.score_p1 if opp == 1 else sim.score_p2
+    _opponent_move(sim, opp_move_fn)
+    after = sim.score_p1 if opp == 1 else sim.score_p2
+    return after - before
 
-    score_after = sim.score_p1 if opp == 1 else sim.score_p2
-    return max(0, score_after - score_before)
 
-
-def run_episode(
-    agent: QLearningAgent,
-    opp_move_fn,
-    agent_player: int,
-    update_agent: bool = True,
-) -> Tuple[Optional[int], float]:
-    """
-    Joue une partie complète : agent vs adversaire.
-
-    Returns
-    -------
-    (winner, total_reward_agent)
-    winner = 1, 2 ou None (égalité).
-    """
+def run_episode(agent, opp_move_fn, agent_player, update_agent=True):
+    """Learn transitions between this agent's turns, using the actual reply."""
+    if agent_player not in (1, 2):
+        raise ValueError("agent_player doit être 1 ou 2.")
     game = Game()
     total_reward = 0.0
-    transitions: List[Tuple[str, int, float, str]] = []
-    MAX_TURNS = 500
+    if game.current_player != agent_player:
+        _opponent_move(game, opp_move_fn)
 
-    for _ in range(MAX_TURNS):
-        if game.is_game_over():
-            break
-
-        if game.current_player == agent_player:
-            state = encode_state(game)
-            s_before = game.score_p1 if agent_player == 1 else game.score_p2
-
-            hole = agent.choose_move(game, greedy=(not update_agent))
-            action_rel = encode_action(game, hole)
-            game.play_move(hole)
-
-            s_after = game.score_p1 if agent_player == 1 else game.score_p2
-            my_cap = s_after - s_before
-
-            step_r = R_TIME + R_CAPTURE * my_cap
-
-            if not game.is_game_over() and game.current_player != agent_player:
-                opp_cap = _opp_captures_after(game, opp_move_fn)
-                step_r += R_OPP_CAP * opp_cap
-
-            next_state = encode_state(game) if not game.is_game_over() else ""
-            transitions.append((state, action_rel, step_r, next_state))
-            total_reward += step_r
-
-        else:
-            try:
-                opp_hole = opp_move_fn(game)
-                game.play_move(opp_hole)
-            except Exception:
-                break
-
-    winner = game.get_winner()
-    terminal_r = (
-        R_WIN if winner == agent_player else R_DRAW if winner is None else R_LOSS
-    )
-    total_reward += terminal_r
-
-    if update_agent and transitions:
-        for i, (s, a, r, ns) in enumerate(transitions):
-            done = i == len(transitions) - 1
-            tr = terminal_r if done else 0.0
-            if done:
-                agent.update(s, a, r + tr, "", [], done=True)
-            else:
-                ns_next = transitions[i + 1][0]
-                # actions valides dans ns ne sont pas stockées ici,
-                # on utilise la Q-valeur brute du prochain état choisi
-                next_rel = transitions[i + 1][1]
-                nq = agent._get_q(ns, next_rel)
-                target = r + agent.gamma * nq
-                curr_q = agent._get_q(s, a)
-                agent._set_q(s, a, curr_q + agent.alpha * (target - curr_q))
-
-    return winner, total_reward
-
-
-def run_selfplay_episode(agent: QLearningAgent) -> Tuple[Optional[int], float, float]:
-    """Run one self-play episode and update the shared Q-table."""
-    game = Game()
-    MAX_TURNS = 500
-    trans_p1: List[Tuple[str, int, float]] = []
-    trans_p2: List[Tuple[str, int, float]] = []
-    r1 = r2 = 0.0
-
-    for _ in range(MAX_TURNS):
-        if game.is_game_over():
-            break
-
-        p = game.current_player
+    while not game.is_game_over():
         state = encode_state(game)
-        sb = game.score_p1 if p == 1 else game.score_p2
+        before = game.score_p1 if agent_player == 1 else game.score_p2
+        hole = agent.choose_move(game, greedy=not update_agent)
+        action = encode_action(game, hole)
+        if not game.play_move(hole):
+            raise ValueError(f"L'agent a renvoyé un coup invalide : {hole}")
+        after = game.score_p1 if agent_player == 1 else game.score_p2
+        reward = R_TIME + R_CAPTURE * (after - before)
 
-        hole = agent.choose_move(game, greedy=False)
-        rel = encode_action(game, hole)
-        game.play_move(hole)
+        if not game.is_game_over():
+            opp = game.current_player
+            before_opp = game.score_p1 if opp == 1 else game.score_p2
+            _opponent_move(game, opp_move_fn)
+            after_opp = game.score_p1 if opp == 1 else game.score_p2
+            reward += R_OPP_CAP * (after_opp - before_opp)
 
-        sa = game.score_p1 if p == 1 else game.score_p2
-        step_r = R_TIME + R_CAPTURE * (sa - sb)
-
-        if p == 1:
-            trans_p1.append((state, rel, step_r))
-            r1 += step_r
+        done = game.is_game_over()
+        if done:
+            winner = game.get_winner()
+            reward += R_DRAW if winner is None else R_WIN if winner == agent_player else R_LOSS
+            next_state, actions = "", []
         else:
-            trans_p2.append((state, rel, step_r))
-            r2 += step_r
+            next_state = encode_state(game)
+            actions = [encode_action(game, m) for m in game.get_valid_moves()]
+        if update_agent:
+            agent.update(state, action, reward, next_state, actions, done)
+        total_reward += reward
+    return game.get_winner(), total_reward
+
+
+def run_selfplay_episode(agent):
+    """Learn one transition per player, after the other player's reply."""
+    game = Game()
+    pending = {}
+    rewards = {1: 0.0, 2: 0.0}
+    while not game.is_game_over():
+        p = game.current_player
+        if p in pending:
+            state, action, reward = pending.pop(p)
+            actions = [encode_action(game, m) for m in game.get_valid_moves()]
+            agent.update(state, action, reward, encode_state(game), actions, False)
+            rewards[p] += reward
+        state = encode_state(game)
+        hole = agent.choose_move(game, greedy=False)
+        action = encode_action(game, hole)
+        before = game.score_p1 if p == 1 else game.score_p2
+        if not game.play_move(hole):
+            raise ValueError(f"L'agent a renvoyé un coup invalide : {hole}")
+        after = game.score_p1 if p == 1 else game.score_p2
+        captured = after - before
+        pending[p] = (state, action, R_TIME + R_CAPTURE * captured)
+        opp = 3 - p
+        if opp in pending:
+            s, a, r = pending[opp]
+            pending[opp] = (s, a, r + R_OPP_CAP * captured)
 
     winner = game.get_winner()
-    term1 = R_WIN if winner == 1 else (R_DRAW if winner is None else R_LOSS)
-    term2 = R_WIN if winner == 2 else (R_DRAW if winner is None else R_LOSS)
-    r1 += term1
-    r2 += term2
-
-    def _bp(trans: List[Tuple[str, int, float]], terminal: float) -> None:
-        if not trans:
-            return
-        ls, la, lr = trans[-1]
-        agent.update(ls, la, lr + terminal, "", [], done=True)
-        for i in range(len(trans) - 2, -1, -1):
-            s, a, r = trans[i]
-            ns, na, _ = trans[i + 1]
-            nq = agent._get_q(ns, na)
-            target = r + agent.gamma * nq
-            curr_q = agent._get_q(s, a)
-            agent._set_q(s, a, curr_q + agent.alpha * (target - curr_q))
-
-    _bp(trans_p1, term1)
-    _bp(trans_p2, term2)
-    return winner, r1, r2
+    for p, (state, action, reward) in pending.items():
+        reward += R_DRAW if winner is None else R_WIN if winner == p else R_LOSS
+        agent.update(state, action, reward, "", [], True)
+        rewards[p] += reward
+    return winner, rewards[1], rewards[2]
 
 
 def evaluate_agent(agent: QLearningAgent, n_eval: int = 100) -> float:
@@ -381,22 +411,17 @@ def evaluate_agent(agent: QLearningAgent, n_eval: int = 100) -> float:
         return random_move(g)
 
     def opp_ab2(g):
-        return alpha_beta_move(g, depth=2)
+        return alpha_beta_move(g, depth=2)[0]
 
     def opp_ab3(g):
-        return alpha_beta_move(g, depth=3)
+        return alpha_beta_move(g, depth=3)[0]
 
-    half = n_eval // 2
-    quarter = n_eval // 4
-
-    schedule = (
-        [(1, opp_rand)] * (half // 2)
-        + [(2, opp_rand)] * (half // 2)
-        + [(1, opp_ab2)] * (quarter // 2)
-        + [(2, opp_ab2)] * (quarter // 2)
-        + [(1, opp_ab3)] * (quarter // 2)
-        + [(2, opp_ab3)] * (quarter // 2)
-    )
+    if type(n_eval) is not int or n_eval < 1:
+        raise ValueError("n_eval doit être un entier positif.")
+    cycle = [(1, opp_rand), (2, opp_rand)] * 2 + [
+        (1, opp_ab2), (2, opp_ab2), (1, opp_ab3), (2, opp_ab3)
+    ]
+    schedule = [cycle[i % len(cycle)] for i in range(n_eval)]
     random.shuffle(schedule)
 
     wins = sum(
@@ -532,7 +557,7 @@ def run_curriculum(agent: Optional[QLearningAgent] = None) -> QLearningAgent:
     QLearningAgent entraîné.
     """
     if agent is None:
-        agent = QLearningAgent()
+        agent = QLearningAgent(checkpoint="latest")
 
     eps1 = min(1.0, agent.epsilon + EPSILON_BUMP)
     _train_phase(
@@ -548,7 +573,7 @@ def run_curriculum(agent: Optional[QLearningAgent] = None) -> QLearningAgent:
         eps_d = min(1.0, agent.epsilon + EPSILON_BUMP)
 
         def _make_opp(d: int):
-            return lambda g: alpha_beta_move(g, depth=d)
+            return lambda g: alpha_beta_move(g, depth=d)[0]
 
         _train_phase(
             agent,

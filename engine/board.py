@@ -1,6 +1,3 @@
-import copy
-
-
 class Board:
     """Represent the Awalé board state."""
 
@@ -14,7 +11,7 @@ class Board:
             Board: Independent board instance with the same hole values.
         """
         new_board = Board()
-        new_board.holes = copy.deepcopy(self.holes)
+        new_board.holes = self.holes[:]
         return new_board
 
     def display(self):

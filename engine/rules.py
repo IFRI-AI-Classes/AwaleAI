@@ -14,7 +14,10 @@ class Rules:
             bool: True if the move is legal, False otherwise.
         """
 
-        if hole < 0 or hole >= len(board.holes):
+        if type(hole) is not int or hole < 0 or hole >= len(board.holes):
+            return False
+
+        if player is not None and player not in (1, 2):
             return False
 
         if board.holes[hole] == 0:
@@ -34,8 +37,8 @@ class Rules:
 
         Internal index convention
         -------------------------
-        Player 1 owns holes[0..5]  — displayed left → right  (bottom row).
-        Player 2 owns holes[6..11] — displayed right → left  (top row).
+        Player 1 owns holes[0..5], displayed left → right  (bottom row).
+        Player 2 owns holes[6..11], displayed right → left  (top row).
 
         Anti-clockwise traversal = incrementing index modulo 12:
           0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 0 → …
@@ -72,6 +75,24 @@ class Rules:
         return current
 
     @staticmethod
+    def capture(board, last_hole, player):
+        """Apply the backwards capture chain and return captured seeds."""
+        start, end = (6, 12) if player == 1 else (0, 6)
+        captured = 0
+        while start <= last_hole < end and board.holes[last_hole] in (2, 3):
+            captured += board.holes[last_hole]
+            board.holes[last_hole] = 0
+            last_hole -= 1
+        return captured
+
+    @staticmethod
+    def simulate_move(board, hole, player):
+        """Copy, sow and capture without mutating the original board."""
+        child = board.copy()
+        last_hole = Rules.sow(child, hole)
+        return child, Rules.capture(child, last_hole, player)
+
+    @staticmethod
     def get_valid_moves(board, player):
         """Return the legal moves for the given player.
 
@@ -90,16 +111,14 @@ class Rules:
                 valid_moves.append(hole)
 
         opponent_holes = range(0, 6) if player == 2 else range(6, 12)
-        if sum(board.holes[i] for i in opponent_holes) == 0:
-            nourishing_moves = []
+        # A pit with >= 4 seeds cannot be captured, so starvation is impossible.
+        if any(board.holes[i] >= 4 for i in opponent_holes):
+            return valid_moves
+        nourishing_moves = []
+        for hole in valid_moves:
+            temp_board, _ = Rules.simulate_move(board, hole, player)
+            if any(temp_board.holes[i] > 0 for i in opponent_holes):
+                nourishing_moves.append(hole)
 
-            for hole in valid_moves:
-                temp_board = board.copy()
-                last_hole = Rules.sow(temp_board, hole)
-                if any(temp_board.holes[i] > 0 for i in opponent_holes):
-                    nourishing_moves.append(hole)
-
-            if nourishing_moves:
-                return nourishing_moves
-
-        return valid_moves
+        # Project variant: starvation is allowed only if every move starves.
+        return nourishing_moves or valid_moves

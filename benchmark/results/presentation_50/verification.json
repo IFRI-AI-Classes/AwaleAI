@@ -1,0 +1,16 @@
+{
+  "unique_games": 50,
+  "agent_participations": 100,
+  "all_games_terminal": true,
+  "all_recorded_moves_legal": true,
+  "seed_conservation_checked_after_every_move": true,
+  "paired_openings_identical": true,
+  "csv_summary_chart_agree": true,
+  "sources_and_models_unchanged": true,
+  "chart_dimensions": [
+    4800,
+    2700
+  ],
+  "csv_sha256": "2e6e3f426a69b8ee6838c5fca7c542a109fcbd42abeb9fc71ccc2068049a5292",
+  "png_sha256": "b86fb0acfd6bca72954de03497820cd73f020fb0806b831dd11713e980b48db3"
+}

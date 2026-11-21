@@ -36,8 +36,8 @@ La partie se termine dans l'un des cas suivants :
 - Un joueur abandonne la partie : l'adversaire récupère toutes les graines restantes.
 
 > « Si toutes les graines tombées germaient, personne ne pourrait suivre le chemin sous les arbres. »
-> — Proverbe akan
+> Proverbe akan
 
 ---
 
-© Myriad 2013 — Tous droits réservés
+© Myriad 2013, Tous droits réservés

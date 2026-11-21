@@ -96,7 +96,7 @@ def choose_move_by_agent(game, agent: str, depth: Optional[int] = None):
 
     Args:
         game: Current game state.
-        agent: Agent identifier — one of "random", "minimax", "alphabeta",
+        agent: Agent identifier, one of "random", "minimax", "alphabeta",
                "qlearning".
         depth: Search depth for tree-based agents. Ignored for random and
                qlearning.
@@ -114,26 +114,43 @@ def choose_move_by_agent(game, agent: str, depth: Optional[int] = None):
             f"Agents disponibles : {list(AGENTS.keys())}"
         )
 
+    depth = effective_depth(agent, depth)
+    if game.is_game_over():
+        return None, None
+
     if agent == "random":
         return random_move(game), None
 
     elif agent == "minimax":
-        effective_depth = depth if depth is not None else 2
-        minimax_agent = Minimax(depth=effective_depth)
+        minimax_agent = Minimax(depth=depth)
         move, nodes = minimax_agent.choose_move(
             game.board,
             player=game.current_player,
             score1=game.score_p1,
             score2=game.score_p2,
+            game=game,
         )
         return move, nodes
 
     elif agent == "alphabeta":
-        effective_depth = depth if depth is not None else 5
-        move, nodes = alpha_beta_move(game, depth=effective_depth)
+        move, nodes = alpha_beta_move(game, depth=depth)
         return move, nodes
 
     elif agent == "qlearning":
         return _get_qlearning_agent().choose_move(game, greedy=True), None
 
     raise ValueError(f"Agent non géré : '{agent}'")
+
+
+def effective_depth(agent, depth=None):
+    """Validate the supported depth and resolve defaults in one place."""
+    if agent not in AGENTS:
+        raise ValueError(f"Agent inconnu : '{agent}'.")
+    allowed = AGENTS[agent]['depths']
+    if allowed is None:
+        return None
+    if depth is None:
+        return 2 if agent == 'minimax' else 5
+    if type(depth) is not int or depth not in allowed:
+        raise ValueError(f"Profondeur invalide pour {agent} : {depth}. Valeurs : {allowed}")
+    return depth

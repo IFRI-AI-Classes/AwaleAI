@@ -1,175 +1,75 @@
+"""Minimax using the same transitions and endings as the game engine."""
 import random
+
+from engine.game import Game
 from agents.heuristic.heuristic import heuristic
 
 
-class SearchState:
-    """Lightweight immutable search state used by Minimax."""
+class SearchState(Game):
+    """Compatibility adapter for callers constructing a search position."""
 
     def __init__(self, holes, score1, score2, player):
-        self.holes = holes
-        self.score1 = score1
-        self.score2 = score2
-        self.player = player
+        super().__init__()
+        self.board.holes = holes[:]
+        self.score_p1, self.score_p2 = score1, score2
+        self.current_player = player
+        self._history = {self.position_key()}
+
+    holes = property(lambda s: s.board.holes)
+    score1 = property(lambda s: s.score_p1)
+    score2 = property(lambda s: s.score_p2)
+    player = property(lambda s: s.current_player)
 
 
 class Minimax:
-    """Minimax agent backed by the heuristic evaluator."""
-
     def __init__(self, depth):
-        """Initialize the search depth.
-
-        Args:
-            depth: Maximum search depth.
-        """
+        if type(depth) is not int or depth < 1:
+            raise ValueError("La profondeur doit être un entier positif.")
         self.depth = depth
-
-    def choose_move(self, board, player, score1=0, score2=0):
-        """Choose the best move for the current position.
-
-        Args:
-            board: Current board state.
-            player: Current player number.
-            score1: Current score of player 1 (default 0).
-            score2: Current score of player 2 (default 0).
-
-        Returns:
-            tuple[int, int]: Selected hole index and number of nodes explored.
-        """
         self._nodes = 0
-        state = SearchState(holes=board.holes[:], score1=score1, score2=score2, player=player)
+
+    def choose_move(self, board, player, score1=0, score2=0, *, game=None):
+        if type(player) is not int or player not in (1, 2):
+            raise ValueError("player doit être 1 ou 2.")
+        if game is not None and player != game.current_player:
+            raise ValueError("player doit correspondre au joueur actif de game.")
+        self._nodes = 0
+        state = game.copy() if game is not None else SearchState(board.holes, score1, score2, player)
         _, move = self.minimax(state, self.depth, player)
         return move, self._nodes
 
     def _shuffled_moves(self, moves):
-        """Return a shuffled copy of moves for tie-breaking."""
-        m = list(moves)
-        random.shuffle(m)
-        return m
+        moves = list(moves)
+        random.shuffle(moves)
+        return moves
 
     def minimax(self, state, depth, root_player):
-        """Run the minimax search from a given state.
-
-        Args:
-            state: Current search state.
-            depth: Remaining search depth.
-            root_player: Player whose perspective is maximized.
-
-        Returns:
-            tuple: Best score and associated move.
-        """
         self._nodes += 1
-
-        if depth == 0 or self.is_terminal(state):
+        if depth <= 0 or self.is_terminal(state):
             return self.evaluate(state, root_player), None
-
-        moves = self._shuffled_moves(self.legal_moves(state))
-        maximizing = state.player == root_player
-        best_move = moves[0]
-
-        if maximizing:
-            best_value = float("-inf")
-            for move in moves:
-                child = self.apply_move(state, move)
-                value, _ = self.minimax(child, depth - 1, root_player)
-                if value > best_value:
-                    best_value, best_move = value, move
-        else:
-            best_value = float("inf")
-            for move in moves:
-                child = self.apply_move(state, move)
-                value, _ = self.minimax(child, depth - 1, root_player)
-                if value < best_value:
-                    best_value, best_move = value, move
-
+        maximizing = state.current_player == root_player
+        best_value = float("-inf") if maximizing else float("inf")
+        best_move = None
+        for move in self._shuffled_moves(self.legal_moves(state)):
+            child = self.apply_move(state, move)
+            value, _ = self.minimax(child, depth - 1, root_player)
+            immediate_win = (value == best_value and child.is_game_over()
+                             and child.get_winner() == state.current_player)
+            if (maximizing and value > best_value) or (not maximizing and value < best_value) or immediate_win:
+                best_value, best_move = value, move
         return best_value, best_move
 
     def legal_moves(self, state):
-        """Return legal moves for the given search state.
-
-        Args:
-            state: Current search state.
-
-        Returns:
-            list: Legal move indices.
-        """
-        from engine.rules import Rules
-        import copy
-
-        class FakeBoard:
-            def __init__(self, holes):
-                self.holes = holes
-
-            def copy(self):
-                return FakeBoard(copy.deepcopy(self.holes))
-
-        return Rules.get_valid_moves(FakeBoard(state.holes), state.player)
+        return state.get_valid_moves()
 
     def apply_move(self, state, hole):
-        """Simulate a complete move and return the next search state.
-
-        Sowing uses the same anti-clockwise index convention as Rules.sow():
-        index increments modulo 12 (0→1→…→11→0).  The starting hole is
-        skipped when seeds > 11 (Kroo rule).
-        """
-        holes = state.holes[:]
-        seeds = holes[hole]
-        holes[hole] = 0
-        current = hole
-        while seeds > 0:
-            current = (current + 1) % 12
-            if current == hole:
-                continue
-            holes[current] += 1
-            seeds -= 1
-        last_hole = current
-
-        mover = state.player
-        opp_start, opp_end = (6, 12) if mover == 1 else (0, 6)
-
-        captured = 0
-        pos = last_hole
-        while opp_start <= pos < opp_end:
-            s = holes[pos]
-            if s not in (2, 3):
-                break
-            captured += s
-            holes[pos] = 0
-            pos -= 1
-
-        score1, score2 = state.score1, state.score2
-        if mover == 1:
-            score1 += captured
-        else:
-            score2 += captured
-
-        next_player = 2 if mover == 1 else 1
-        return SearchState(
-            holes=holes, score1=score1, score2=score2, player=next_player
-        )
+        child = state.copy()
+        if not child.play_move(hole):
+            raise ValueError(f"Coup invalide : {hole}")
+        return child
 
     def is_terminal(self, state):
-        """Return whether the search state is terminal."""
-        return len(self.legal_moves(state)) == 0
+        return state.is_game_over()
 
     def evaluate(self, state, root_player):
-        """Evaluate a search state with the heuristic module.
-
-        Args:
-            state: Current search state.
-            root_player: Player used as the evaluation reference.
-
-        Returns:
-            float: Heuristic score for the state.
-        """
-
-        class FakeBoard:
-            def __init__(self, holes):
-                self.holes = holes
-
-        class FakeGame:
-            def __init__(self, s):
-                self.score_p1 = s.score1
-                self.score_p2 = s.score2
-                self.board = FakeBoard(s.holes)
-
-        return heuristic.evaluate(FakeGame(state), root_player)
+        return heuristic.evaluate(state, root_player)

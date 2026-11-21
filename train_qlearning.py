@@ -16,6 +16,6 @@ if __name__ == "__main__":
     print("=" * 60)
     print("  ENTRAINEMENT Q-LEARNING AWELE - CURRICULUM COMPLET")
     print("=" * 60)
-    agent = QLearningAgent()
+    agent = QLearningAgent(checkpoint="latest")
     run_curriculum(agent)
     print("\nEntrainement termine. Modeles sauvegardes dans models/")

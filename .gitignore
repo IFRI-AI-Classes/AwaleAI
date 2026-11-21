@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AwaleAI: audit kept exclusively local
+/audit/
+
+# Local agent instructions
+/AGENTS.md
+
+# Dependency caches
+/node_modules/
+
+# Fresh Q-tables from experiments; historical models remain versioned
+/models/experiment_*/
+.q-table-*.tmp
+
+# Temporary benchmark artifacts
+/benchmark/results/smoke/
+
+# Desktop-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini

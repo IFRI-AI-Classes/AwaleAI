@@ -1,5 +1,7 @@
 from engine.rules import Rules
 
+WIN_SCORE = 999999
+
 
 class heuristic:
     """Heuristic evaluation helpers for Awalé positions."""
@@ -18,6 +20,10 @@ class heuristic:
         Returns:
             float: Higher values mean a better position for the player.
         """
+        if game.is_game_over():
+            winner = game.get_winner()
+            return 0 if winner is None else WIN_SCORE if winner == player else -WIN_SCORE
+
         opponent = 2 if player == 1 else 1
 
         if player == 1:
@@ -36,11 +42,7 @@ class heuristic:
     @staticmethod
     def count_valid_moves(board, player):
         """Count the legal moves for a player."""
-        count = 0
-        for hole in range(12):
-            if Rules.is_valid_move(board, hole, player):
-                count += 1
-        return count
+        return len(Rules.get_valid_moves(board, player))
 
     @staticmethod
     def seeds_in_opponent_camp(board, player):
