@@ -51,6 +51,46 @@ test('human request sends game id and version', async () => {
     assert.equal(game.gameState.version, 4);
 });
 
+for (const kind of ['human', 'ai']) {
+    for (const invalid of ['other game', 'old version', 'skipped version']) {
+        test(`${kind} ignores a response for ${invalid}`, async () => {
+            const { context, game } = setup();
+            game.players.player1.type = kind;
+            game.players.player1.agent = 'minimax';
+            game.players.player1.depth = 2;
+            const before = game.gameState;
+            const next = { ...before, version: invalid === 'old version' ? 2
+                : invalid === 'skipped version' ? 5 : 4,
+                game_id: invalid === 'other game' ? 'game-b' : before.game_id,
+                scores: { player1: 12, player2: 9 }, current_player: 'player2' };
+            let animated = false;
+            game.animateSow = async () => { animated = true; };
+            context.fetch = async () => ({ ok: true, json: async () => kind === 'ai'
+                ? { game_state: next, telemetry: { pit_played: 0 } } : next });
+            await (kind === 'ai' ? game.playAI() : game.sendMove(0));
+            assert.equal(game.gameState, before);
+            assert.equal(game.renders, undefined);
+            assert.equal(animated, false);
+            assert.equal(game._busy, false);
+        });
+    }
+
+    test(`${kind} does not replace a newer state after animation`, async () => {
+        const { context, game } = setup();
+        game.players.player1.type = kind;
+        game.players.player1.agent = 'random';
+        const next = { ...game.gameState, version: 4, current_player: 'player2' };
+        const newer = { ...next, version: 5, scores: { player1: 2, player2: 3 } };
+        context.fetch = async () => ({ ok: true, json: async () => kind === 'ai'
+            ? { game_state: next, telemetry: { pit_played: 0 } } : next });
+        game.animateSow = async () => { game.gameState = newer; };
+        await (kind === 'ai' ? game.playAI() : game.sendMove(0));
+        assert.equal(game.gameState, newer);
+        assert.equal(game.renders, undefined);
+        assert.equal(game._busy, false);
+    });
+}
+
 test('stopping a game ignores its delayed response', async () => {
     const { context, game } = setup();
     const responseState = { ...game.gameState, version: 4 };
@@ -88,7 +128,7 @@ test('stopping during animation cannot restore the old game', async () => {
 
 test('AI starts when the first player is AI and the other is human', async () => {
     const { context, game, timers } = setup();
-    const state = { ...game.gameState, game_id: 'new-game', version: 0 };
+    const state = { ...game.gameState, game_id: '19f64771-4989-4672-9bc1-76a27ac437a8', version: 0 };
     context.fetch = async () => ({ ok: true, json: async () => state });
     let plays = 0;
     game.playAI = () => { plays++; };
@@ -100,7 +140,7 @@ test('AI starts when the first player is AI and the other is human', async () =>
 
 test('scheduled AI turn is discarded after stop', async () => {
     const { context, game, timers } = setup();
-    const state = { ...game.gameState, game_id: 'new-game', version: 0 };
+    const state = { ...game.gameState, game_id: '19f64771-4989-4672-9bc1-76a27ac437a8', version: 0 };
     context.fetch = async () => ({ ok: true, json: async () => state });
     let plays = 0;
     game.playAI = () => { plays++; };
@@ -167,5 +207,174 @@ test('seed layouts preserve every grain, stay inside the circle and never overla
                 assert.ok(Math.hypot(p.x-q.x,p.y-q.y) > (p.size+q.size)/2, `count ${count}, grains ${i}/${j} overlap`);
             }
         }
+    }
+});
+
+test('AI request sends its own id, version, board and parameters without cache', async () => {
+    const { context, game } = setup();
+    Object.assign(game.players.player1, {type: 'ai', agent: 'alphabeta', depth: 2});
+    let payload, cache;
+    context.fetch = async (_, options) => {
+        payload = JSON.parse(options.body);
+        cache = options.cache;
+        return {ok: true, json: async () => ({game_state: {...game.gameState, version: 4,
+            current_player: 'player2'}, telemetry: {pit_played: 0}})};
+    };
+    await game.playAI();
+    assert.deepEqual(payload, {game_id: 'game-a', version: 3, player: 'player1',
+        agent: 'alphabeta', depth: 2, board: Array(12).fill(4)});
+    assert.equal(cache, 'no-store');
+});
+
+test('a delayed start response cannot replace a newer game', async () => {
+    const {context, game} = setup();
+    const oldState = {...game.gameState, game_id: '19f64771-4989-4672-9bc1-76a27ac437a8', version: 0};
+    const newState = {...oldState, game_id: 'ab47cb6e-a3ec-4e14-a345-27ead7fdbba7'};
+    let finish;
+    context.fetch = () => new Promise(resolve => {finish = resolve;});
+    const oldStart = game.startGame();
+    const finishOld = finish;
+    const newStart = game.startGame();
+    finish({ok: true, json: async () => newState});
+    await newStart;
+    finishOld({ok: true, json: async () => oldState});
+    await oldStart;
+    assert.equal(game.gameState, newState);
+    assert.equal(game.renders, 1);
+});
+
+test('start refuses an invalid id or a reused id', async () => {
+    for (const id of [null, 'broken', '19f64771-4989-4672-9bc1-76a27ac437a8']) {
+        const {context, game} = setup();
+        game.gameState.game_id = '19f64771-4989-4672-9bc1-76a27ac437a8';
+        const state = {...game.gameState, game_id: id, version: 0};
+        context.fetch = async () => ({ok: true, json: async () => state});
+        await game.startGame();
+        assert.equal(game.gameState, null);
+        assert.equal(game.renders, undefined);
+        assert.equal(game._busy, false);
+    }
+});
+
+test('two independent frontend clients apply only their own responses', async () => {
+    const a = setup(), b = setup();
+    b.game.gameState.game_id = 'game-b';
+    let finishA, finishB;
+    a.context.fetch = () => new Promise(resolve => {finishA = resolve;});
+    b.context.fetch = () => new Promise(resolve => {finishB = resolve;});
+    const nextA = {...a.game.gameState, version: 4, current_player: 'player2', scores: {player1: 2, player2: 0}};
+    const nextB = {...b.game.gameState, version: 4, current_player: 'player2', scores: {player1: 0, player2: 3}};
+    const moves = [a.game.sendMove(0), b.game.sendMove(0)];
+    finishB({ok: true, json: async () => nextB});
+    await moves[1];
+    assert.equal(a.game.gameState.version, 3);
+    finishA({ok: true, json: async () => nextA});
+    await moves[0];
+    assert.equal(a.game.gameState, nextA);
+    assert.equal(b.game.gameState, nextB);
+});
+
+for (const kind of ['human', 'ai']) {
+    test(`${kind} reloads its own game after a version conflict`, async () => {
+        const {context, game} = setup();
+        Object.assign(game.players.player1, {type: kind, agent: 'minimax', depth: 2});
+        const latest = {...game.gameState, version: 4, current_player: 'player2',
+            scores: {player1: 2, player2: 0}, valid_moves: [6]};
+        const requests = [];
+        let animated = false;
+        game.animateSow = async () => {animated = true;};
+        context.fetch = async (url, options) => {
+            requests.push({url, options});
+            return requests.length === 1
+                ? {ok: false, status: 409, json: async () => ({detail: 'Version conflict'})}
+                : {ok: true, json: async () => latest};
+        };
+        await (kind === 'ai' ? game.playAI() : game.sendMove(0));
+        assert.equal(requests.length, 2);
+        assert.equal(requests[1].url, `${game.apiBaseUrl}/api/game/game-a`);
+        assert.equal(requests[1].options.cache, 'no-store');
+        assert.equal(game.gameState, latest);
+        assert.equal(animated, false);
+        assert.equal(game._busy, false);
+    });
+}
+
+test('the next move after a conflict uses the refreshed version and player', async () => {
+    const {context, game} = setup();
+    const refreshed = {...game.gameState, version: 4, current_player: 'player2', valid_moves: [6]};
+    const requests = [];
+    context.fetch = async (_, options) => {
+        requests.push(options);
+        if (requests.length === 1) return {ok: false, status: 409, json: async () => ({detail: 'Conflict'})};
+        if (requests.length === 2) return {ok: true, json: async () => refreshed};
+        return {ok: true, json: async () => ({...refreshed, version: 5, current_player: 'player1'})};
+    };
+    await game.sendMove(0);
+    await game.sendMove(6);
+    const payload = JSON.parse(requests[2].body);
+    assert.equal(payload.version, 4);
+    assert.equal(payload.player, 'player2');
+    assert.equal(payload.game_id, 'game-a');
+    assert.equal(game.gameState.version, 5);
+});
+
+for (const invalid of ['other game', 'old version', 'HTTP error']) {
+    test(`conflict refresh rejects ${invalid}`, async () => {
+        const {context, game} = setup();
+        const before = game.gameState;
+        const latest = {...before, game_id: invalid === 'other game' ? 'game-b' : 'game-a',
+            version: invalid === 'old version' ? 2 : 4};
+        let calls = 0;
+        context.fetch = async () => ++calls === 1
+            ? {ok: false, status: 409, json: async () => ({detail: 'Conflict'})}
+            : {ok: invalid !== 'HTTP error', json: async () => latest};
+        await game.sendMove(0);
+        assert.equal(game.gameState, before);
+        assert.equal(game.renders, undefined);
+        assert.equal(game._busy, false);
+    });
+}
+
+for (const change of ['new game', 'new version']) {
+    test(`delayed conflict refresh cannot overwrite a ${change}`, async () => {
+        const {context, game} = setup();
+        const refreshed = {...game.gameState, version: 4};
+        let finish, entered;
+        const refreshing = new Promise(resolve => {entered = resolve;});
+        let calls = 0;
+        context.fetch = () => {
+            if (++calls === 1) return Promise.resolve({ok: false, status: 409,
+                json: async () => ({detail: 'Conflict'})});
+            entered();
+            return new Promise(resolve => {finish = resolve;});
+        };
+        const move = game.sendMove(0);
+        await refreshing;
+        if (change === 'new game') game.resetGame();
+        const newer = {...refreshed, game_id: change === 'new game' ? 'game-b' : 'game-a', version: 5};
+        game.gameState = newer;
+        if (change === 'new game') game._busy = true;
+        finish({ok: true, json: async () => refreshed});
+        await move;
+        assert.equal(game.gameState, newer);
+        assert.equal(game.renders, undefined);
+        assert.equal(game._busy, change === 'new game');
+    });
+}
+
+test('AI resumes after conflict refresh and its scheduled turn expires on stop', async () => {
+    for (const stop of [false, true]) {
+        const {context, game, timers} = setup();
+        game.players.player2.type = 'ai';
+        const refreshed = {...game.gameState, version: 4, current_player: 'player2', valid_moves: [6]};
+        let calls = 0, plays = 0;
+        context.fetch = async () => ++calls === 1
+            ? {ok: false, status: 409, json: async () => ({detail: 'Conflict'})}
+            : {ok: true, json: async () => refreshed};
+        game.playAI = () => {plays++;};
+        await game.sendMove(0);
+        if (stop) game.resetGame();
+        timers.forEach(fn => fn());
+        assert.equal(plays, stop ? 0 : 1);
     }
 });

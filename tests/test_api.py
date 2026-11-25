@@ -1,4 +1,8 @@
 import unittest
+import tempfile
+from pathlib import Path
+from contextlib import closing
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 from uuid import uuid4
@@ -10,8 +14,12 @@ from tests.test_engine import position
 
 class APITests(unittest.TestCase):
     def setUp(self):
-        server._sessions.clear()
-        self.client = TestClient(server.app)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.path = Path(temporary.name) / 'sessions.sqlite3'
+        self.app = server.create_app(self.path)
+        self.store = self.app.state.session_store
+        self.client = TestClient(self.app)
 
     def start(self, ai=False):
         r = self.client.post('/api/game/start', json={
@@ -95,9 +103,13 @@ class APITests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/game/move', json={'pit_index': 0, 'player': 'player1'}).status_code, 422)
 
     def test_game_ending_serialization_uses_engine_scores(self):
-        state = self.start()
-        session = server._sessions[state['game_id']]
-        session.game = position([0] * 6 + [1, 0, 0, 0, 0, 0], (24, 23))
+        state = {'game_id': str(uuid4())}
+        game = position([0] * 6 + [1, 0, 0, 0, 0, 0], (24, 23))
+        game._history = {game.position_key()}
+        self.store.create(state['game_id'], game,
+                          {'player1': {'name': 'A', 'type': 'human'},
+                           'player2': {'name': 'B', 'type': 'human'}},
+                          server.SESSION_TTL, server.MAX_SESSIONS)
         snapshot = self.client.get('/api/game/' + state['game_id']).json()
         self.assertEqual(snapshot['scores'], {'player1': 24, 'player2': 24})
         self.assertEqual(snapshot['valid_moves'], [])
@@ -109,6 +121,8 @@ class APITests(unittest.TestCase):
             state = self.start()
             r = self.client.post('/api/game/start', json={'player1': {}, 'player2': {}})
             self.assertEqual(r.status_code, 503)
-            server._sessions[state['game_id']].last_used -= server.SESSION_TTL + 1
+            with closing(sqlite3.connect(self.path)) as connection:
+                with connection:
+                    connection.execute('UPDATE sessions SET expires_at = 0 WHERE game_id = ?', (state['game_id'],))
             self.assertEqual(self.client.get('/api/game/' + state['game_id']).status_code, 404)
             self.start()

@@ -56,7 +56,8 @@ AwaleAI/
 │   └── q_table_best.json       # Checkpoint choisi par l'évaluation interne
 │
 ├── api/
-│   └── server.py               # API REST FastAPI (sessions isolées)
+│   ├── server.py               # API REST FastAPI (sessions isolées)
+│   └── session_store.py        # Sauvegardes SQLite et contrôle atomique de version
 │
 ├── web/
 │   ├── index.html              # Interface HTML, plateau, configuration, modale
@@ -71,8 +72,8 @@ AwaleAI/
 ├── train_qlearning.py          # Lancement du curriculum d'entraînement
 ├── Les règles d'Awale.md       # Document de référence ; variantes régionales possibles
 ├── requirements.txt            # Dépendances Python
-├── vercel.json                 # Configuration déploiement Vercel
-└── pyproject.toml              # Entrypoint Vercel
+├── vercel.json                 # Frontend statique et proxy API vers Render
+└── render.yaml                 # Backend avec disque SQLite persistant
 ```
 
 ---
@@ -474,7 +475,21 @@ Exemple après le coup humain `3`, puis le coup Alpha-Bêta `9` ; les temps dép
 
 Chaque coup exige le `game_id` retourné au démarrage et la dernière `version`. Une version ou un plateau périmé est refusé avec HTTP 409 ; un mauvais joueur, un mauvais type de joueur ou une profondeur hors limites avec HTTP 400. Les champs de type incorrect sont refusés avec HTTP 422. Les appels d'une même partie sont sérialisés.
 
-Les sessions sont conservées en mémoire dans **un seul processus ASGI**, expirent après une heure d'inactivité et sont limitées à 256 parties actives. Elles disparaissent au redémarrage ; lancer plusieurs workers ou utiliser un hébergement serverless nécessite un stockage partagé.
+Les sessions sont conservées dans SQLite, expirent après une heure d'inactivité et sont limitées à 256 parties actives. Le fichier par défaut est `var/sessions.sqlite3` ; `AWALE_DB_PATH` permet de choisir un autre chemin. Tous les workers doivent ouvrir le même fichier sur un disque local persistant. Chaque requête restaure son propre état, sans cache de plateau en mémoire. Plateau, scores bruts, joueurs, dernier agent et profondeur utilisés, tour, historique des positions, historique chronologique des coups et paramètres de fin sont sauvegardés ensemble.
+
+L'écriture exige l'identifiant de la session et la version précédente dans une transaction `BEGIN IMMEDIATE`. Deux requêtes concurrentes sur la même version produisent un seul coup enregistré et HTTP 409 pour l'autre. Les calculs IA ne conservent pas le verrou SQLite. En cas d'erreur de sauvegarde ou de commit, HTTP 503 est renvoyé et le coup n'est pas annoncé comme réussi. Les réponses des endpoints de partie portent `Cache-Control: no-store`. Les champs et règles de l'API existante sont conservés ; `/start` accepte aussi les champs facultatifs `agent` et `depth` des joueurs.
+
+Après un HTTP 409, le frontend relit exclusivement la partie concernée et vérifie l'identifiant, la version et la génération avant de l'afficher. Le prochain coup utilise la version actualisée ; une actualisation retardée ne remplace pas une nouvelle partie ou un état plus récent.
+
+### Déploiement avec sessions persistantes
+
+Le fichier `render.yaml` décrit un service Python avec **une instance**, un disque persistant monté sur `/var/data`, `AWALE_DB_PATH=/var/data/awale/sessions.sqlite3` et deux workers Uvicorn utilisant ce même fichier. Un disque persistant nécessite une offre Render compatible, le fichier propose `starter`. Pour un service existant configuré dans le tableau de bord, appliquer ces paramètres à ce service. Aucun déploiement distant n'a été effectué ou validé par les tests locaux.
+
+Vercel sert les fichiers statiques et transmet les éventuels appels `/api/*` à `https://awale-ai-backend.onrender.com/api/*`. Le frontend public continue d'appeler directement ce backend. L'ancien point d'entrée Python Vercel est supprimé pour éviter un second stockage de sessions dans une fonction éphémère. Si l'adresse du backend change, mettre à jour `web/app.js` et `vercel.json` ensemble.
+
+SQLite coordonne plusieurs processus sur un même fichier local ; il ne partage pas les données entre des instances ayant des disques indépendants. Ne pas augmenter le nombre d'instances Render avec cette configuration. Une extension à plusieurs hôtes nécessite un stockage transactionnel partagé. Le TTL d'une heure, la limite de 256 parties et l'absence de reprise automatique après rechargement du navigateur sont conservés. Les parties précédemment en mémoire ne peuvent pas être récupérées au premier déploiement de cette correction.
+
+Les tests de sessions utilisent des bases temporaires et plusieurs clients et processus. Voir le [diagnostic avant correction](docs/session-diagnosis.md) et le [rapport de validation](docs/session-validation.md).
 
 ---
 
@@ -648,9 +663,9 @@ python -m unittest discover -s tests -v
 node --test tests/test_web.cjs
 ```
 
-Les tests couvrent l'affamement dans les deux camps, le Kroo, la conservation des graines, les victoires immédiates, l'équivalence des recherches, les transitions Q-Learning, les sessions concurrentes et l'arrêt des requêtes web.
+Les tests couvrent l'affamement dans les deux camps, le Kroo, la conservation des graines, les victoires immédiates, l'équivalence des recherches, les transitions Q-Learning, les sessions concurrentes et l'arrêt des requêtes web. Les tests API utilisent des fichiers SQLite temporaires. Ils comprennent cent parties en parallèle, des clients HTTP distincts, un backend Uvicorn séparé, des processus concurrents, la persistance et les échecs de commit.
 
-Au 21 novembre 2026, la dernière validation Python rapporte **58 tests réussis**, dont huit contrôles du protocole de benchmark. Le frontend dispose de **8 tests JavaScript réussis** : les régressions de requêtes, d'annulation et de captures terminales sont complétées par un contrôle géométrique exhaustif des 0 à 48 graines par case. Les tests unitaires et les expériences de force de jeu sont présentés séparément dans les rapports ; des tests réussis ne prouvent pas la performance des algorithmes.
+Au 25 novembre 2026, la validation locale rapporte **85 tests Python réussis**, dont huit contrôles du protocole de benchmark, et **29 tests JavaScript réussis**. Le frontend est vérifié face aux réponses d'une autre partie, aux versions obsolètes, aux démarrages retardés, aux arrêts pendant l'animation et à la resynchronisation après HTTP 409. Les captures terminales et le contrôle géométrique exhaustif des 0 à 48 graines restent couverts. Les tests unitaires et les expériences de force de jeu sont présentés séparément dans les rapports ; des tests réussis ne prouvent pas la performance des algorithmes.
 
 ```bash
 python -X utf8 -u benchmark/run_50.py

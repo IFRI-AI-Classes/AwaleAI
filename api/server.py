@@ -1,63 +1,29 @@
-"""FastAPI endpoints with isolated, versioned in-memory game sessions."""
+"""FastAPI endpoints with isolated, versioned SQLite game sessions."""
+import logging
+import os
+from pathlib import Path
 import time
-from dataclasses import dataclass, field
-from threading import Lock
 from typing import Annotated, Literal, Optional
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from engine.game import Game
 from agents import difficulty
 from agents.difficulty import AGENTS
-
-app = FastAPI(title="AwaleAI API", version="1.1.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+from api.session_store import (
+    SQLiteSessionStore, StorageError, SessionNotFound, VersionConflict, SessionCapacity,
 )
 
-# Local development: run a single ASGI worker. Sessions expire after inactivity.
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# All workers must use the same persistent SQLite file.
 SESSION_TTL = 3600
 MAX_SESSIONS = 256
-
-
-@dataclass
-class Session:
-    game: Game
-    players: dict
-    last_used: float = field(default_factory=time.monotonic)
-    lock: Lock = field(default_factory=Lock)
-
-
-_sessions: dict[str, Session] = {}
-_sessions_lock = Lock()
-
-
-def _expire_sessions(now):
-    for key in list(_sessions):
-        session = _sessions[key]
-        if now - session.last_used > SESSION_TTL and session.lock.acquire(blocking=False):
-            try:
-                del _sessions[key]
-            finally:
-                session.lock.release()
-
-
-def _get_session(game_id):
-    key = str(game_id)
-    with _sessions_lock:
-        now = time.monotonic()
-        _expire_sessions(now)
-        session = _sessions.get(key)
-        if session is None:
-            raise HTTPException(status_code=404, detail="Partie introuvable ou expirée.")
-        session.last_used = now
-        return session
 
 
 def _get_winner_key(game):
@@ -88,6 +54,8 @@ Seed = Annotated[int, Field(strict=True, ge=0, le=48)]
 class PlayerConfig(BaseModel):
     name: str = Field(default="Joueur", max_length=80)
     type: Literal["human", "ai"] = "human"
+    agent: Optional[Literal["random", "minimax", "alphabeta", "qlearning"]] = None
+    depth: Optional[int] = Field(default=None, strict=True)
 
 
 class StartRequest(BaseModel):
@@ -124,48 +92,56 @@ def _check_turn(session, req, player_type):
         raise HTTPException(status_code=400, detail="Le type du joueur ne correspond pas à ce coup.")
 
 
-@app.post("/api/game/start")
-def start_game(req: StartRequest):
+@router.post("/api/game/start")
+def start_game(req: StartRequest, request: Request):
     key = str(uuid4())
-    session = Session(Game(), {
+    players = {
         "player1": req.player1.model_dump(),
         "player2": req.player2.model_dump(),
-    })
-    with _sessions_lock:
-        _expire_sessions(time.monotonic())
-        if len(_sessions) >= MAX_SESSIONS:
-            raise HTTPException(status_code=503, detail="Trop de parties actives. Réessayez plus tard.")
-        _sessions[key] = session
+    }
+    for player in players.values():
+        if player["type"] == "ai" and player["agent"] is not None:
+            try:
+                player["depth"] = difficulty.effective_depth(player["agent"], player["depth"])
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+    session = request.app.state.session_store.create(
+        key, Game(), players, SESSION_TTL, MAX_SESSIONS,
+    )
     return _game_to_state(session.game, key)
 
 
-@app.get("/api/game/{game_id}")
-def get_game(game_id: UUID):
-    session = _get_session(game_id)
-    with session.lock:
+@router.get("/api/game/{game_id}")
+def get_game(game_id: UUID, request: Request):
+    store = request.app.state.session_store
+    with store.lock_for(game_id):
+        session = store.load(game_id, ttl=SESSION_TTL)
         return _game_to_state(session.game, game_id)
 
 
-@app.post("/api/game/move")
-def human_move(req: MoveRequest):
-    session = _get_session(req.game_id)
-    with session.lock:
+@router.post("/api/game/move")
+def human_move(req: MoveRequest, request: Request):
+    store = request.app.state.session_store
+    with store.lock_for(req.game_id):
+        session = store.load(req.game_id, ttl=SESSION_TTL)
         _check_turn(session, req, "human")
         if not session.game.play_move(req.pit_index):
             raise HTTPException(status_code=400, detail="Coup invalide.")
-        session.last_used = time.monotonic()
+        session.moves.append({"version": session.game.plies, "player": req.player, "pit_index": req.pit_index})
+        store.save(req.game_id, session, expected_version=req.version, ttl=SESSION_TTL)
         return _game_to_state(session.game, req.game_id)
 
 
-@app.get("/api/agents")
+@router.get("/api/agents")
 def get_agents():
     return {"agents": AGENTS}
 
 
-@app.post("/api/game/ai-move")
-def ai_move(req: AIMoveRequest):
-    session = _get_session(req.game_id)
-    with session.lock:
+@router.post("/api/game/ai-move")
+def ai_move(req: AIMoveRequest, request: Request):
+    store = request.app.state.session_store
+    with store.lock_for(req.game_id):
+        session = store.load(req.game_id, ttl=SESSION_TTL)
         _check_turn(session, req, "ai")
         game = session.game
         if req.board is not None and req.board != game.board.holes:
@@ -181,7 +157,9 @@ def ai_move(req: AIMoveRequest):
         elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
         if not game.play_move(hole):
             raise HTTPException(status_code=500, detail="L'IA a renvoyé un coup invalide.")
-        session.last_used = time.monotonic()
+        session.players[req.player].update(agent=agent, depth=depth)
+        session.moves.append({"version": game.plies, "player": req.player, "pit_index": hole})
+        store.save(req.game_id, session, expected_version=req.version, ttl=SESSION_TTL)
         return {
             "game_state": _game_to_state(game, req.game_id),
             "telemetry": {
@@ -195,6 +173,49 @@ def ai_move(req: AIMoveRequest):
         }
 
 
-@app.get("/")
-def root():
+@router.get("/")
+def root(request: Request):
+    request.app.state.session_store.check()
     return {"status": "ok", "project": "AwaleAI"}
+
+
+def create_app(db_path=None):
+    application = FastAPI(title="AwaleAI API", version="1.1.0")
+    application.state.session_store = SQLiteSessionStore(
+        db_path if db_path is not None else os.environ.get(
+            "AWALE_DB_PATH", str(Path(__file__).resolve().parents[1] / "var" / "sessions.sqlite3"),
+        )
+    )
+    application.add_middleware(
+        CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+    )
+
+    @application.middleware("http")
+    async def prevent_session_cache(request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/game/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @application.exception_handler(StorageError)
+    async def storage_error(request, exc):
+        logger.error("Session storage failed for %s", request.url.path, exc_info=exc)
+        return JSONResponse(status_code=503, content={"detail": "Le stockage des parties est indisponible. Réessayez plus tard."})
+
+    @application.exception_handler(SessionNotFound)
+    async def missing_session(request, exc):
+        return JSONResponse(status_code=404, content={"detail": "Partie introuvable ou expirée."})
+
+    @application.exception_handler(VersionConflict)
+    async def stale_session(request, exc):
+        return JSONResponse(status_code=409, content={"detail": "Le plateau a changé. Ce coup est périmé."})
+
+    @application.exception_handler(SessionCapacity)
+    async def session_capacity(request, exc):
+        return JSONResponse(status_code=503, content={"detail": "Trop de parties actives. Réessayez plus tard."})
+
+    application.include_router(router)
+    return application
+
+
+app = create_app()

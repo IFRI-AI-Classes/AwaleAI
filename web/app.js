@@ -939,7 +939,60 @@ class AwaleGame {
         this._abortController = new AbortController();
     }
 
+    _requestIsCurrent(generation, state) {
+        return generation === this._generation
+            && this.gameState?.game_id === state.game_id
+            && this.gameState?.version === state.version;
+    }
+
+    _acceptMoveState(data, state) {
+        if (data?.game_id === state.game_id
+                && Number.isSafeInteger(data.version) && data.version === state.version + 1) {
+            return true;
+        }
+        this.showToast('La réponse ne correspond pas à ce coup. Relancez une nouvelle partie.', 'error');
+        this.setStatus('Réponse de partie incohérente', 'error');
+        this._setBusy(false);
+        return false;
+    }
+
+    async _refreshAfterConflict(generation, state) {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/api/game/${state.game_id}`, {
+                cache: 'no-store',
+                signal: this._abortController.signal,
+            });
+            const data = await response.json();
+            if (!this._requestIsCurrent(generation, state)) return;
+            if (!response.ok || data?.game_id !== state.game_id
+                    || !Number.isSafeInteger(data.version) || data.version < state.version) {
+                throw new Error('La partie ne peut pas être actualisée.');
+            }
+
+            this.gameState = data;
+            this._turnCount = data.version;
+            this._lastTelemetry = null;
+            this.renderGameState();
+            if (data.game_over) return;
+
+            const nextPlayer = this.players[data.current_player];
+            this.setStatus(`Tour de ${nextPlayer.name}`, nextPlayer.type === 'ai' ? 'ai' : 'playing');
+            if (nextPlayer.type === 'ai') {
+                setTimeout(() => {
+                    if (this._requestIsCurrent(generation, data)) this.playAI();
+                }, 800);
+            }
+        } catch (error) {
+            if (!this._requestIsCurrent(generation, state) || error.name === 'AbortError') return;
+            this.showToast('Actualisation impossible. Réessayez ou démarrez une nouvelle partie.', 'error');
+            this.setStatus('Actualisation de la partie impossible', 'error');
+        } finally {
+            if (generation === this._generation) this._setBusy(false);
+        }
+    }
+
     async startGame() {
+        const previousGameId = this.gameState?.game_id;
         // Confirmation si partie en cours
         if (this.gameState && !this.gameState.game_over) {
             if (!confirm('Une partie est en cours. Voulez-vous vraiment recommencer ?')) return;
@@ -987,11 +1040,12 @@ class AwaleGame {
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/game/start`, {
                 method: 'POST',
+                cache: 'no-store',
                 signal: this._abortController.signal,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    player1: { name: player1Name, type: player1Type },
-                    player2: { name: player2Name, type: player2Type }
+                    player1: this.players.player1,
+                    player2: this.players.player2
                 })
             });
 
@@ -1005,6 +1059,13 @@ class AwaleGame {
                 return;
             }
 
+            if (typeof data.game_id !== 'string'
+                    || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.game_id)
+                    || data.game_id === previousGameId || data.version !== 0) {
+                this.showToast('Identifiant ou état initial de partie invalide.', 'error');
+                this.setStatus('Erreur au démarrage', 'error');
+                return;
+            }
             this.gameState = data;
             this._lastTelemetry = null;         // reset analyse
             this.renderGameState();
@@ -1044,6 +1105,7 @@ class AwaleGame {
         // Verrou anti double-clic
         if (this._busy) return;
         const generation = this._generation;
+        const requestState = { ...this.gameState, board: [...this.gameState.board] };
 
         const currentPlayerKey = this.gameState.current_player;
         const currentPlayer    = this.players[currentPlayerKey];
@@ -1066,11 +1128,12 @@ class AwaleGame {
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/game/move`, {
                 method: 'POST',
+                cache: 'no-store',
                 signal: this._abortController.signal,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    game_id: this.gameState.game_id,
-                    version: this.gameState.version,
+                    game_id: requestState.game_id,
+                    version: requestState.version,
                     pit_index: pitIndex,
                     player: currentPlayerKey
                 })
@@ -1079,8 +1142,17 @@ class AwaleGame {
             // BUG FIX : lire le corps UNE seule fois avant de tester response.ok
             const data = await response.json();
             if (generation !== this._generation) return;
+            if (!this._requestIsCurrent(generation, requestState)) {
+                this._setBusy(false);
+                return;
+            }
 
             if (!response.ok) {
+                if (response.status === 409) {
+                    this.showToast('Le plateau a changé. Actualisation de la partie…', 'warning');
+                    await this._refreshAfterConflict(generation, requestState);
+                    return;
+                }
                 this.showToast(`Coup refusé : ${data.detail}`, 'warning');
                 this.setStatus('Coup invalide', 'error');
                 this._setBusy(false);
@@ -1088,12 +1160,17 @@ class AwaleGame {
                 return;
             }
 
-            const seedCount      = this.gameState.board[pitIndex];
-            const boardSnapshot  = [...this.gameState.board];
+            if (!this._acceptMoveState(data, requestState)) return;
+            const seedCount      = requestState.board[pitIndex];
+            const boardSnapshot  = [...requestState.board];
             const capturedCells  = this._findCapturedCells(pitIndex, boardSnapshot, data.board, currentPlayerKey);
 
             await this.animateSow(pitIndex, seedCount, boardSnapshot, capturedCells);
             if (generation !== this._generation) return;
+            if (!this._requestIsCurrent(generation, requestState)) {
+                this._setBusy(false);
+                return;
+            }
 
             this.gameState = data;
 
@@ -1140,6 +1217,7 @@ class AwaleGame {
 
         if (this._busy) return;
         const generation = this._generation;
+        const requestState = { ...this.gameState, board: [...this.gameState.board] };
 
         const currentPlayerKey = this.gameState.current_player;
         const currentPlayer    = this.players[currentPlayerKey];
@@ -1155,35 +1233,50 @@ class AwaleGame {
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/game/ai-move`, {
                 method: 'POST',
+                cache: 'no-store',
                 signal: this._abortController.signal,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    game_id: this.gameState.game_id,
-                    version: this.gameState.version,
+                    game_id: requestState.game_id,
+                    version: requestState.version,
                     player: currentPlayerKey,
                     agent:  currentPlayer.agent,
                     depth:  currentPlayer.depth,
-                    board:  this.gameState.board
+                    board:  requestState.board
                 })
             });
 
             const data = await response.json();
             if (generation !== this._generation) return;
+            if (!this._requestIsCurrent(generation, requestState)) {
+                this._setBusy(false);
+                return;
+            }
 
             if (!response.ok) {
+                if (response.status === 409) {
+                    this.showToast('Le plateau a changé. Actualisation de la partie…', 'warning');
+                    await this._refreshAfterConflict(generation, requestState);
+                    return;
+                }
                 this.showToast(`Erreur IA : ${data.detail}`, 'error');
                 this.setStatus('Erreur IA', 'error');
                 this._setBusy(false);
                 return;
             }
 
+            if (!this._acceptMoveState(data.game_state, requestState)) return;
             const pitIndex      = data.telemetry.pit_played;
-            const seedCount     = this.gameState.board[pitIndex];
-            const boardSnapshot = [...this.gameState.board];
+            const seedCount     = requestState.board[pitIndex];
+            const boardSnapshot = [...requestState.board];
             const capturedCells = this._findCapturedCells(pitIndex, boardSnapshot, data.game_state.board, currentPlayerKey);
 
             await this.animateSow(pitIndex, seedCount, boardSnapshot, capturedCells);
             if (generation !== this._generation) return;
+            if (!this._requestIsCurrent(generation, requestState)) {
+                this._setBusy(false);
+                return;
+            }
 
             this.gameState = data.game_state;
             this.updateTelemetry(data.telemetry);

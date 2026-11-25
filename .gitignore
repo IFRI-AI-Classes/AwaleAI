@@ -226,6 +226,13 @@ __marimo__/
 # Dependency caches
 /node_modules/
 
+# Persistent game sessions, local development only
+/var/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
 # Fresh Q-tables from experiments; historical models remain versioned
 /models/experiment_*/
 .q-table-*.tmp
